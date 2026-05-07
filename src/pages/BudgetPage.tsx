@@ -1,0 +1,231 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  onSnapshot,
+  Timestamp,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { useStore } from '../store';
+import { 
+  Plus, 
+  PieChart, 
+  Tag, 
+  DollarSign, 
+  Calendar,
+  X,
+  AlertTriangle,
+  TrendingDown,
+  CheckCircle2
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { toast } from 'react-hot-toast';
+import { Budget, CATEGORIES } from '../types';
+import { cn } from '../firebase/utils';
+
+export default function BudgetPage() {
+  const { user, budgets, setBudgets, transactions } = useStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'budgets'),
+      where('userId', '==', user.uid),
+      where('month', '==', selectedMonth)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const bSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Budget[];
+      setBudgets(bSet);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'budgets');
+    });
+    return () => unsubscribe();
+  }, [user, selectedMonth, setBudgets]);
+
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const budgetData = {
+      userId: user?.uid,
+      category: formData.get('category') as string,
+      amount: Number(formData.get('amount')),
+      month: selectedMonth,
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      if (editingBudget?.id) {
+        await updateDoc(doc(db, 'budgets', editingBudget.id), budgetData);
+        toast.success('Budget updated');
+      } else {
+        await addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
+        toast.success('Budget set');
+      }
+      setIsModalOpen(false);
+      setEditingBudget(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'budgets');
+    }
+  };
+
+  const calculateSpending = (category: string) => {
+    return transactions
+      .filter(tx => 
+        tx.type === 'expense' && 
+        tx.category === category && 
+        format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'yyyy-MM') === selectedMonth
+      )
+      .reduce((acc, tx) => acc + tx.amount, 0);
+  };
+
+  return (
+    <div className="space-y-8 pb-20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-black tracking-tight text-white">Budget Planner</h1>
+          <p className="text-slate-400 font-medium tracking-tight">Set your boundaries. Build your future.</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 font-bold focus:outline-none focus:border-emerald-500 transition-all text-white"
+          />
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          >
+            <Plus className="w-6 h-6" />
+            Set Budget
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {budgets.map((budget) => {
+          const spent = calculateSpending(budget.category);
+          const percent = Math.min((spent / budget.amount) * 100, 100);
+          const isOver = spent > budget.amount;
+          const isNearlyOver = percent > 85 && !isOver;
+
+          return (
+            <motion.div
+              layout
+              key={budget.id}
+              className="bg-[#161B22] border border-slate-800 rounded-3xl p-8 backdrop-blur-xl relative group overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                    <PieChart className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">{budget.category}</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => { setEditingBudget(budget); setIsModalOpen(true); }}
+                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  >
+                    <Plus className="w-4 h-4 rotate-45" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-baseline justify-between mb-4">
+                <p className="text-3xl font-black text-white tracking-tighter">
+                  ${spent.toLocaleString()}
+                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">spent of ${budget.amount.toLocaleString()}</span>
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${percent}%` }}
+                    className={cn(
+                      "h-full rounded-full transition-colors duration-500",
+                      isOver ? "bg-rose-500" : isNearlyOver ? "bg-amber-500" : "bg-emerald-500"
+                    )}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  {isOver ? (
+                    <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-widest">
+                      <AlertTriangle className="w-4 h-4" /> Over Budget
+                    </div>
+                  ) : isNearlyOver ? (
+                    <div className="flex items-center gap-1.5 text-amber-500 text-[10px] font-bold uppercase tracking-widest">
+                      <TrendingDown className="w-4 h-4" /> Almost reached
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
+                      <CheckCircle2 className="w-4 h-4" /> On track
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+            </motion.div>
+          );
+        })}
+        {budgets.length === 0 && (
+          <div className="md:col-span-2 xl:col-span-3 py-32 flex flex-col items-center justify-center text-center opacity-30 select-none">
+            <PieChart className="w-20 h-20 mb-6" />
+            <h3 className="text-2xl font-bold">No budgets set for this month</h3>
+            <p className="mt-2 font-medium max-w-sm">Every dollar needs a job. Assign your income to categories to stay in control.</p>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl">
+              <div className="p-8 pb-4 flex items-center justify-between">
+                <h2 className="text-2xl font-black text-white">{editingBudget ? 'Edit Budget' : 'Set Category Budget'}</h2>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+              </div>
+              <form onSubmit={handleSave} className="p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Category</label>
+                    <div className="relative">
+                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <select name="category" defaultValue={editingBudget?.category || ''} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white">
+                        {CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Budget Amount ($)</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <input type="number" name="amount" defaultValue={editingBudget?.amount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="e.g. 500" required />
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  {editingBudget ? 'Update Budget' : 'Set Budget'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
