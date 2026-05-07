@@ -112,21 +112,21 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Dashboard</h1>
-          <p className="text-gray-400 font-medium">Welcome back, {user?.displayName || 'Builder'}</p>
+          <h1 className="text-4xl font-black tracking-tight text-white">Dasbor</h1>
+          <p className="text-gray-400 font-medium">Selamat datang kembali, {user?.displayName || 'Pengguna'}</p>
         </div>
         <button className="px-6 py-3 bg-[#10b981] text-white rounded-2xl font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]">
           <Plus className="w-5 h-5" />
-          Add Transaction
+          Tambah Transaksi
         </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Balance', value: stats.balance, icon: Wallet, color: 'text-white', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
-          { label: 'Monthly Income', value: stats.income, icon: TrendingUp, color: 'text-emerald-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
-          { label: 'Monthly Spending', value: stats.expense, icon: TrendingDown, color: 'text-rose-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
+          { label: 'Total Saldo', value: stats.balance, icon: Wallet, color: 'text-white', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
+          { label: 'Pendapatan Bulanan', value: stats.income, icon: TrendingUp, color: 'text-emerald-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
+          { label: 'Pengeluaran Bulanan', value: stats.expense, icon: TrendingDown, color: 'text-rose-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
         ].map((stat, idx) => (
           <motion.div
             key={idx}
@@ -139,9 +139,9 @@ export default function DashboardPage() {
           >
             <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
             <h3 className={cn("text-2xl font-bold mt-1", stat.color)}>
-              ${stat.value.toLocaleString()}
+              Rp{stat.value.toLocaleString()}
             </h3>
-            {idx === 0 && <p className="text-emerald-500 text-xs font-semibold mt-2">+4.5% vs last month</p>}
+            {idx === 0 && <p className="text-emerald-500 text-xs font-semibold mt-2">+4.5% vs bulan lalu</p>}
             {idx > 0 && (
               <div className="w-full bg-slate-800 h-1.5 mt-4 rounded-full overflow-hidden">
                 <div 
@@ -157,12 +157,12 @@ export default function DashboardPage() {
           whileHover={{ y: -5 }}
           className="bg-gradient-to-br from-emerald-600 to-teal-800 p-5 rounded-2xl border border-emerald-400/20"
         >
-          <p className="text-emerald-100 text-sm font-medium">Health Score</p>
+          <p className="text-emerald-100 text-sm font-medium">Skor Kesehatan</p>
           <div className="flex items-end gap-2 text-white">
             <h3 className="text-4xl font-black mt-1">84</h3>
-            <span className="text-emerald-100/80 text-[10px] mb-1.5 uppercase tracking-widest font-bold">Excellent</span>
+            <span className="text-emerald-100/80 text-[10px] mb-1.5 uppercase tracking-widest font-bold">Luar Biasa</span>
           </div>
-          <p className="text-emerald-100/70 text-[10px] mt-2 font-medium">Based on saving ratio & debt level</p>
+          <p className="text-emerald-100/70 text-[10px] mt-2 font-medium">Berdasarkan rasio tabungan & level hutang</p>
         </motion.div>
       </div>
 
@@ -170,10 +170,10 @@ export default function DashboardPage() {
         {/* Cashflow Chart */}
         <div className="lg:col-span-2 bg-[#161B22] rounded-3xl border border-slate-800 p-6 flex flex-col">
           <div className="flex items-center justify-between mb-8">
-            <h4 className="text-lg font-bold text-white">Cashflow Analysis</h4>
+            <h4 className="text-lg font-bold text-white">Analisis Arus Kas</h4>
             <div className="flex gap-2">
-              <span className="px-3 py-1 bg-slate-800 text-[10px] rounded-full text-slate-300 font-bold uppercase tracking-wider">Last 7 Days</span>
-              <span className="px-3 py-1 bg-emerald-500/20 text-[10px] rounded-full text-emerald-400 font-bold uppercase tracking-wider">Last 30 Days</span>
+              <span className="px-3 py-1 bg-slate-800 text-[10px] rounded-full text-slate-300 font-bold uppercase tracking-wider">7 Hari Terakhir</span>
+              <span className="px-3 py-1 bg-emerald-500/20 text-[10px] rounded-full text-emerald-400 font-bold uppercase tracking-wider">30 Hari Terakhir</span>
             </div>
           </div>
           <div className="h-[300px] w-full">
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                 <XAxis dataKey="name" stroke="#ffffff40" axisLine={false} tickLine={false} fontSize={12} />
-                <YAxis stroke="#ffffff40" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `$${v}`} />
+                <YAxis stroke="#ffffff40" axisLine={false} tickLine={false} fontSize={12} tickFormatter={(v) => `Rp${v}`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: '12px' }}
                   itemStyle={{ color: '#10b981' }}
@@ -205,7 +205,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
                 <BrainCircuit className="text-white w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-white">AI Insights</h3>
+              <h3 className="text-lg font-bold text-white">Wawasan AI</h3>
             </div>
             <button 
               onClick={generateInsights}
@@ -240,7 +240,7 @@ export default function DashboardPage() {
             ) : (
               <div className="py-12 flex flex-col items-center text-center opacity-30">
                 <BrainCircuit className="w-12 h-12 mb-4" />
-                <p className="text-xs font-medium">Click the + to generate <br /> fresh financial intelligence.</p>
+                <p className="text-xs font-medium">Klik + untuk menghasilkan <br /> kecerdasan finansial terbaru.</p>
               </div>
             )}
           </div>
@@ -250,10 +250,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expenses by Category */}
         <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-8">
-          <h3 className="text-xl font-bold mb-8 text-white">Category Budgets</h3>
+          <h3 className="text-xl font-bold mb-8 text-white">Anggaran Kategori</h3>
           <div className="space-y-6">
             {pieData.map((item, idx) => {
-              const spentPercent = Math.min((item.value / 5000) * 100, 100); // Mock target 5000
+              const spentPercent = Math.min((item.value / 5000000) * 100, 100); // Mock target 5jt untuk konteks Rp
               const color = COLORS[idx % COLORS.length];
               return (
                 <div key={idx}>
@@ -270,16 +270,16 @@ export default function DashboardPage() {
                 </div>
               );
             })}
-            {pieData.length === 0 && <p className="text-slate-500 italic text-center py-20">No budget data available.</p>}
+            {pieData.length === 0 && <p className="text-slate-500 italic text-center py-20">Tidak ada data anggaran tersedia.</p>}
           </div>
         </div>
 
         {/* Recent Transactions */}
         <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-8">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-bold text-white">Recent Transactions</h3>
+            <h3 className="text-xl font-bold text-white">Transaksi Terakhir</h3>
             <button className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1 group uppercase tracking-widest">
-              View All
+              Lihat Semua
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
@@ -302,7 +302,7 @@ export default function DashboardPage() {
                   "text-lg font-black tracking-tighter",
                   tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                 )}>
-                  {tx.type === 'income' ? '+' : '-'}${tx.amount.toLocaleString()}
+                  {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString()}
                 </p>
               </div>
             ))}

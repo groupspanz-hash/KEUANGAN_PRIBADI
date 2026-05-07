@@ -24,16 +24,16 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="hidden md:flex items-center gap-10">
-          <a href="#features" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Features</a>
-          <a href="#security" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Security</a>
+          <a href="#features" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Fitur</a>
+          <a href="#security" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Keamanan</a>
         </div>
         <div className="flex items-center gap-6">
-          <Link to="/login" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Login</Link>
+          <Link to="/login" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Masuk</Link>
           <Link 
             to="/register" 
             className="px-8 py-3.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           >
-            Get Access
+            Dapatkan Akses
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -48,7 +48,7 @@ export default function LandingPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900/50 border border-slate-800 text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mb-12 backdrop-blur-xl"
         >
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          System Active: Financial Core 1.0
+          Sistem Aktif: Inti Keuangan 1.0
         </motion.div>
         
         <motion.h1
@@ -57,8 +57,8 @@ export default function LandingPage() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-7xl md:text-[140px] font-black tracking-tighter leading-[0.8] mb-10 text-white"
         >
-          MONEY <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-200 to-white">EVOLVED.</span>
+          KEUANGAN <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-emerald-200 to-white">MODERN.</span>
         </motion.h1>
 
         <motion.p
@@ -67,8 +67,8 @@ export default function LandingPage() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-xl text-slate-500 max-w-2xl mb-16 font-bold leading-relaxed"
         >
-          Redefine your relationship with wealth. Experience a professional-grade 
-          interface for tracking assets, debt, and aspirations with AI synthesis.
+          Definisikan ulang hubungan Anda dengan kekayaan. Rasakan antarmuka kelas profesional 
+          untuk melacak aset, hutang, dan aspirasi dengan sintesis AI.
         </motion.p>
 
         <motion.div
@@ -81,14 +81,14 @@ export default function LandingPage() {
             to="/register" 
             className="px-12 py-6 bg-white text-black text-xs font-black uppercase tracking-[.2em] rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-2xl"
           >
-            Initialize Account
+            Mulai Sekarang
             <ArrowRight className="w-5 h-5" />
           </Link>
           <Link 
             to="/login" 
             className="px-12 py-6 bg-slate-900/50 text-white border border-slate-800 text-xs font-black uppercase tracking-[.2em] rounded-2xl hover:bg-slate-800 transition-all backdrop-blur-xl"
           >
-            Resume Session
+            Lanjutkan Sesi
           </Link>
         </motion.div>
       </section>
@@ -105,8 +105,8 @@ export default function LandingPage() {
               <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-8 text-emerald-500 border border-emerald-500/20">
                 <Cpu className="w-8 h-8" />
               </div>
-              <h3 className="text-4xl font-black text-white mb-4 tracking-tight">AI Semantic Core</h3>
-              <p className="text-xl text-slate-500 font-bold max-w-md">Gemini-powered neural engine that synthesizes your spending patterns into actionable intelligence.</p>
+              <h3 className="text-4xl font-black text-white mb-4 tracking-tight">Inti Semantik AI</h3>
+              <p className="text-xl text-slate-500 font-bold max-w-md">Mesin neural bertenaga Gemini yang menyintesis pola pengeluaran Anda menjadi kecerdasan yang dapat ditindaklanjukan.</p>
             </div>
             <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 blur-[100px] rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
           </motion.div>
@@ -119,8 +119,8 @@ export default function LandingPage() {
             <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-8 text-emerald-500 border border-emerald-500/20 transition-transform group-hover:scale-110">
               <Database className="w-8 h-8" />
             </div>
-            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">Cloud Sync</h3>
-            <p className="text-lg text-slate-500 font-bold leading-snug">Distributed real-time ledger architecture built on Firebase high-performance nodes.</p>
+            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">Sinkronisasi Cloud</h3>
+            <p className="text-lg text-slate-500 font-bold leading-snug">Arsitektur buku besar real-time terdistribusi yang dibangun di atas node berkinerja tinggi Firebase.</p>
           </motion.div>
 
           <motion.div
@@ -131,8 +131,8 @@ export default function LandingPage() {
             <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-8 text-emerald-500 border border-emerald-500/20 transition-transform group-hover:scale-110">
               <Shield className="w-8 h-8" />
             </div>
-            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">Encryption</h3>
-            <p className="text-lg text-slate-500 font-bold leading-snug">Bank-level security protocols ensuring your financial identity remains private.</p>
+            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">Enkripsi</h3>
+            <p className="text-lg text-slate-500 font-bold leading-snug">Protokol keamanan tingkat bank yang memastikan identitas keuangan Anda tetap pribadi.</p>
           </motion.div>
 
           <motion.div
@@ -145,8 +145,8 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-8 text-emerald-500 border border-emerald-500/20">
                   <BarChart3 className="w-8 h-8" />
                 </div>
-                <h3 className="text-4xl font-black text-white mb-4 tracking-tight">Visual Analysis</h3>
-                <p className="text-xl text-slate-500 font-bold">Immersive data visualizations built with precision logic using Recharts engines.</p>
+                <h3 className="text-4xl font-black text-white mb-4 tracking-tight">Analisis Visual</h3>
+                <p className="text-xl text-slate-500 font-bold">Visualisasi data imersif yang dibangun dengan logika presisi menggunakan mesin Recharts.</p>
               </div>
               <div className="w-full md:w-1/3 aspect-square bg-slate-900 rounded-[32px] border border-slate-800 p-8 flex items-end justify-between gap-2 overflow-hidden">
                 {[40, 70, 45, 90, 65, 80].map((h, i) => (
@@ -169,12 +169,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-4">
             <LayoutDashboard className="w-6 h-6 text-emerald-500" />
-            <span className="text-sm font-black text-white uppercase tracking-[0.2em]">SF MONITOR SYSTEM</span>
+            <span className="text-sm font-black text-white uppercase tracking-[0.2em]">SF MONITOR SISTEM</span>
           </div>
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.1em]">© 2026 SmartFinance Collective. Professional Intelligence Deployment.</p>
           <div className="flex items-center gap-10">
-            <a href="#" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Privacy</a>
-            <a href="#" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Terms</a>
+            <a href="#" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Privasi</a>
+            <a href="#" className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">Ketentuan</a>
             <Globe className="w-5 h-5 text-slate-500 hover:text-white cursor-pointer transition-colors" />
           </div>
         </div>

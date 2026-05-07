@@ -16,11 +16,11 @@ import { motion } from 'motion/react';
 import { cn } from '../firebase/utils';
 
 const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Transactions', path: '/transactions', icon: ArrowLeftRight },
-  { name: 'Budget', path: '/budget', icon: PieChart },
-  { name: 'Savings Goals', path: '/goals', icon: Target },
-  { name: 'Debts & Loans', path: '/debts', icon: HandCoins },
+  { name: 'Dasbor', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Transaksi', path: '/transactions', icon: ArrowLeftRight },
+  { name: 'Anggaran', path: '/budget', icon: PieChart },
+  { name: 'Target Tabungan', path: '/goals', icon: Target },
+  { name: 'Hutang & Pinjaman', path: '/debts', icon: HandCoins },
 ];
 
 export default function Sidebar() {
@@ -69,8 +69,8 @@ export default function Sidebar() {
 
       <div className="p-4 mt-auto">
         <div className="bg-emerald-950/20 rounded-2xl p-4 mb-4 border border-emerald-500/10">
-          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 px-1">AI Financial Advice</p>
-          <p className="text-sm text-slate-300 italic leading-relaxed">"Every dollar you save today is a soldier fighting for your future freedom."</p>
+          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 px-1">Wawasan AI</p>
+          <p className="text-sm text-slate-300 italic leading-relaxed">"Setiap rupiah yang Anda tabung hari ini adalah langkah menuju kebebasan masa depan Anda."</p>
         </div>
 
         <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/5">
@@ -94,7 +94,7 @@ export default function Sidebar() {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-400/5 transition-all duration-300"
         >
           <LogOut className="w-5 h-5" />
-          <span className="text-sm font-medium">Sign Out</span>
+          <span className="text-sm font-medium">Keluar</span>
         </button>
       </div>
     </aside>

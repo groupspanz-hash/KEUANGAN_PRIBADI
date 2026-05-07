@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Budget, CATEGORIES } from '../types';
-import { cn } from '../firebase/utils';
+import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
 
 export default function BudgetPage() {
   const { user, budgets, setBudgets, transactions } = useStore();
@@ -66,10 +66,10 @@ export default function BudgetPage() {
     try {
       if (editingBudget?.id) {
         await updateDoc(doc(db, 'budgets', editingBudget.id), budgetData);
-        toast.success('Budget updated');
+        toast.success('Anggaran diperbarui');
       } else {
         await addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
-        toast.success('Budget set');
+        toast.success('Anggaran ditetapkan');
       }
       setIsModalOpen(false);
       setEditingBudget(null);
@@ -92,8 +92,8 @@ export default function BudgetPage() {
     <div className="space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Budget Planner</h1>
-          <p className="text-slate-400 font-medium tracking-tight">Set your boundaries. Build your future.</p>
+          <h1 className="text-4xl font-black tracking-tight text-white">Perencana Anggaran</h1>
+          <p className="text-slate-400 font-medium tracking-tight">Tetapkan batasan Anda. Bangun masa depan Anda.</p>
         </div>
         <div className="flex items-center gap-4">
           <input 
@@ -107,7 +107,7 @@ export default function BudgetPage() {
             className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           >
             <Plus className="w-6 h-6" />
-            Set Budget
+            Atur Anggaran
           </button>
         </div>
       </div>
@@ -144,8 +144,8 @@ export default function BudgetPage() {
 
               <div className="flex items-baseline justify-between mb-4">
                 <p className="text-3xl font-black text-white tracking-tighter">
-                  ${spent.toLocaleString()}
-                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">spent of ${budget.amount.toLocaleString()}</span>
+                  Rp{spent.toLocaleString()}
+                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">terpakai dari Rp{budget.amount.toLocaleString()}</span>
                 </p>
               </div>
 
@@ -163,15 +163,15 @@ export default function BudgetPage() {
                 <div className="flex items-center gap-2">
                   {isOver ? (
                     <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-widest">
-                      <AlertTriangle className="w-4 h-4" /> Over Budget
+                      <AlertTriangle className="w-4 h-4" /> Melebihi Anggaran
                     </div>
                   ) : isNearlyOver ? (
                     <div className="flex items-center gap-1.5 text-amber-500 text-[10px] font-bold uppercase tracking-widest">
-                      <TrendingDown className="w-4 h-4" /> Almost reached
+                      <TrendingDown className="w-4 h-4" /> Hampir tercapai
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
-                      <CheckCircle2 className="w-4 h-4" /> On track
+                      <CheckCircle2 className="w-4 h-4" /> Sesuai jalur
                     </div>
                   )}
                 </div>
@@ -184,8 +184,8 @@ export default function BudgetPage() {
         {budgets.length === 0 && (
           <div className="md:col-span-2 xl:col-span-3 py-32 flex flex-col items-center justify-center text-center opacity-30 select-none">
             <PieChart className="w-20 h-20 mb-6" />
-            <h3 className="text-2xl font-bold">No budgets set for this month</h3>
-            <p className="mt-2 font-medium max-w-sm">Every dollar needs a job. Assign your income to categories to stay in control.</p>
+            <h3 className="text-2xl font-bold">Belum ada anggaran untuk bulan ini</h3>
+            <p className="mt-2 font-medium max-w-sm">Setiap rupiah butuh tugas. Tetapkan pendapatan Anda ke kategori agar tetap terkendali.</p>
           </div>
         )}
       </div>
@@ -196,13 +196,13 @@ export default function BudgetPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl">
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">{editingBudget ? 'Edit Budget' : 'Set Category Budget'}</h2>
+                <h2 className="text-2xl font-black text-white">{editingBudget ? 'Ubah Anggaran' : 'Atur Anggaran Kategori'}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
               </div>
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Category</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Kategori</label>
                     <div className="relative">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select name="category" defaultValue={editingBudget?.category || ''} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white">
@@ -211,15 +211,15 @@ export default function BudgetPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Budget Amount ($)</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah Anggaran (Rp)</label>
                     <div className="relative">
                       <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <input type="number" name="amount" defaultValue={editingBudget?.amount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="e.g. 500" required />
+                      <input type="number" name="amount" defaultValue={editingBudget?.amount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="misal: 500000" required />
                     </div>
                   </div>
                 </div>
                 <button type="submit" className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                  {editingBudget ? 'Update Budget' : 'Set Budget'}
+                  {editingBudget ? 'Perbarui Anggaran' : 'Atur Anggaran'}
                 </button>
               </form>
             </motion.div>

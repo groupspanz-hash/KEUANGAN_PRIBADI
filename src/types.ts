@@ -87,8 +87,8 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const PAYMENT_METHODS = [
-  'Cash',
-  'Transfer',
-  'E-wallet',
+  'Tunai',
+  'Transfer Bank',
+  'Dompet Digital',
   'Kartu Kredit'
 ];

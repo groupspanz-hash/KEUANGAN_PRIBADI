@@ -23,19 +23,19 @@ app.post("/api/ai/insights", async (req, res) => {
     }
 
     const prompt = `
-      You are a Smart Financial AI Assistant. Analyze the following user data and provide 3-5 concise, actionable financial insights.
-      User Profile: ${JSON.stringify(userProfile)}
-      Recent Transactions: ${JSON.stringify(transactions)}
+      Anda adalah Asisten Keuangan AI Pintar. Analisis data pengguna berikut dan berikan 3-5 wawasan keuangan yang ringkas dan dapat ditindaklanjuti.
+      Profil Pengguna: ${JSON.stringify(userProfile)}
+      Transaksi Terakhir: ${JSON.stringify(transactions)}
       
-      Respond with a JSON array of insights. Each insight should have:
-      - title (string)
-      - content (string)
-      - type (one of: "warning", "tip", "positive")
+      Berikan respon dalam bentuk array JSON berisi wawasan. Setiap wawasan harus memiliki:
+      - title (string, dalam Bahasa Indonesia)
+      - content (string, dalam Bahasa Indonesia)
+      - type (salah satu dari: "warning", "tip", "positive")
       
-      Example:
+      Contoh:
       [
-        {"title": "Spending Alert", "content": "You've spent 25% more on food than last week.", "type": "warning"},
-        {"title": "Savings Tip", "content": "Switching to a generic brand for groceries could save you $50/month.", "type": "tip"}
+        {"title": "Peringatan Pengeluaran", "content": "Anda telah menghabiskan 25% lebih banyak untuk makanan dibandingkan minggu lalu.", "type": "warning"},
+        {"title": "Tip Menabung", "content": "Beralih ke merek generik untuk kebutuhan bulanan dapat menghemat Rp500.000/bulan.", "type": "tip"}
       ]
     `;
 

@@ -30,7 +30,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Goal } from '../types';
-import { cn } from '../firebase/utils';
+import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
 
 export default function GoalsPage() {
   const { user, goals, setGoals } = useStore();
@@ -64,10 +64,10 @@ export default function GoalsPage() {
     try {
       if (editingGoal?.id) {
         await updateDoc(doc(db, 'goals', editingGoal.id), goalData);
-        toast.success('Goal updated');
+        toast.success('Target diperbarui');
       } else {
         await addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() });
-        toast.success('Goal added');
+        toast.success('Target ditambahkan');
       }
       setIsModalOpen(false);
       setEditingGoal(null);
@@ -89,15 +89,15 @@ export default function GoalsPage() {
     <div className="space-y-8 pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Savings Goals</h1>
-          <p className="text-slate-400 font-medium tracking-tight">Dream big. Save consistently. Win life.</p>
+          <h1 className="text-4xl font-black tracking-tight text-white">Target Tabungan</h1>
+          <p className="text-slate-400 font-medium tracking-tight">Bermimpi besar. Menabung secara konsisten. Menangkan hidup.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-6 h-6" />
-          Add Goal
+          Tambah Target
         </button>
       </div>
 
@@ -120,7 +120,7 @@ export default function GoalsPage() {
                   <div>
                     <h3 className="text-2xl font-black text-white">{goal.name}</h3>
                     <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">
-                      Target: ${goal.targetAmount.toLocaleString()}
+                      Target: Rp{goal.targetAmount.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -134,9 +134,9 @@ export default function GoalsPage() {
 
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <span className="text-4xl font-black tracking-tighter text-white">${goal.currentAmount.toLocaleString()}</span>
+                  <span className="text-4xl font-black tracking-tighter text-white">Rp{goal.currentAmount.toLocaleString()}</span>
                   <span className="bg-emerald-500/10 text-emerald-400 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border border-emerald-500/20">
-                    {percent.toFixed(0)}% Achieved
+                    {percent.toFixed(0)}% Tercapai
                   </span>
                 </div>
                 
@@ -151,10 +151,10 @@ export default function GoalsPage() {
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 tracking-widest uppercase outline-none">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    {goal.deadline ? format(goal.deadline instanceof Timestamp ? goal.deadline.toDate() : new Date(goal.deadline), 'MMMM dd, yyyy') : 'No Deadline'}
+                    {goal.deadline ? format(goal.deadline instanceof Timestamp ? goal.deadline.toDate() : new Date(goal.deadline), 'MMMM dd, yyyy') : 'Tanpa Tenggat Waktu'}
                   </div>
                   <div className="text-emerald-400/80 font-black">
-                    ${(goal.targetAmount - goal.currentAmount).toLocaleString()} left to go
+                    Rp{(goal.targetAmount - goal.currentAmount).toLocaleString()} lagi untuk mencapai target
                   </div>
                 </div>
               </div>
@@ -171,32 +171,32 @@ export default function GoalsPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl">
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">{editingGoal ? 'Update Goal' : 'New Savings Goal'}</h2>
+                <h2 className="text-2xl font-black text-white">{editingGoal ? 'Perbarui Target' : 'Target Tabungan Baru'}</h2>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
               </div>
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Goal Name</label>
-                    <input type="text" name="name" defaultValue={editingGoal?.name} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="e.g. New Electric Car" required />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Nama Target</label>
+                    <input type="text" name="name" defaultValue={editingGoal?.name} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="misal: Mobil Listrik Baru" required />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Target ($)</label>
-                      <input type="number" name="targetAmount" defaultValue={editingGoal?.targetAmount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="50000" required />
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Target (Rp)</label>
+                      <input type="number" name="targetAmount" defaultValue={editingGoal?.targetAmount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="50000000" required />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Current ($)</label>
-                      <input type="number" name="currentAmount" defaultValue={editingGoal?.currentAmount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="1000" required />
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Saat Ini (Rp)</label>
+                      <input type="number" name="currentAmount" defaultValue={editingGoal?.currentAmount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="1000000" required />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Target Date</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tanggal Target</label>
                     <input type="date" name="deadline" defaultValue={editingGoal?.deadline ? format(editingGoal.deadline instanceof Timestamp ? editingGoal.deadline.toDate() : new Date(editingGoal.deadline), 'yyyy-MM-dd') : ''} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" />
                   </div>
                 </div>
                 <button type="submit" className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                  {editingGoal ? 'Update Goal' : 'Start Saving'}
+                  {editingGoal ? 'Perbarui Target' : 'Mulai Menabung'}
                 </button>
               </form>
             </motion.div>

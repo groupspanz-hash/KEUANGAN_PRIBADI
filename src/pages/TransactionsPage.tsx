@@ -45,12 +45,12 @@ import { toast } from 'react-hot-toast';
 import { Transaction, CATEGORIES, PAYMENT_METHODS } from '../types';
 
 const transactionSchema = z.object({
-  amount: z.number().min(0.01, 'Amount must be greater than 0'),
+  amount: z.number().min(0.01, 'Jumlah harus lebih besar dari 0'),
   type: z.enum(['income', 'expense']),
-  category: z.string().min(1, 'Category is required'),
-  paymentMethod: z.string().min(1, 'Payment method is required'),
-  description: z.string().min(1, 'Description is required'),
-  date: z.string().min(1, 'Date is required'),
+  category: z.string().min(1, 'Kategori harus diisi'),
+  paymentMethod: z.string().min(1, 'Metode pembayaran harus diisi'),
+  description: z.string().min(1, 'Deskripsi harus diisi'),
+  date: z.string().min(1, 'Tanggal harus diisi'),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -108,7 +108,7 @@ export default function TransactionsPage() {
         const snapshot = await uploadBytes(fileRef, receiptFile);
         receiptUrl = await getDownloadURL(snapshot.ref);
       } catch (error) {
-        toast.error('Failed to upload receipt');
+        toast.error('Gagal mengunggah kwitansi');
         return;
       } finally {
         setIsUploading(false);
@@ -130,17 +130,17 @@ export default function TransactionsPage() {
     try {
       if (editingTransaction?.id) {
         await updateDoc(doc(db, 'transactions', editingTransaction.id), txData);
-        toast.success('Transaction updated');
+        toast.success('Transaksi diperbarui');
       } else {
         await addDoc(collection(db, 'transactions'), {
           ...txData,
           createdAt: serverTimestamp(),
         });
-        toast.success('Transaction added');
+        toast.success('Transaksi ditambahkan');
       }
       handleCloseModal();
     } catch (error) {
-      toast.error('Failed to save transaction');
+      toast.error('Gagal menyimpan transaksi');
     }
   };
 
@@ -156,12 +156,12 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this transaction?')) {
+    if (window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
       try {
         await deleteDoc(doc(db, 'transactions', id));
-        toast.success('Transaction deleted');
+        toast.success('Transaksi dihapus');
       } catch (error) {
-        toast.error('Delete failed');
+        toast.error('Hapus gagal');
       }
     }
   };
@@ -185,15 +185,15 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Transactions</h1>
-          <p className="text-slate-400 font-medium">Keep your ledger clean and secure.</p>
+          <h1 className="text-4xl font-black tracking-tight text-white">Transaksi</h1>
+          <p className="text-slate-400 font-medium">Jaga buku besar Anda tetap bersih dan aman.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-6 h-6" />
-          Add Transaction
+          Tambah Transaksi
         </button>
       </div>
 
@@ -203,20 +203,20 @@ export default function TransactionsPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
           <input
             type="text"
-            placeholder="Search by description or category..."
+            placeholder="Cari berdasarkan deskripsi atau kategori..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
           />
         </div>
         <div className="flex gap-2 w-full lg:w-auto">
-          {['all', 'income', 'expense'].map((type) => (
+          {['semua', 'pendapatan', 'pengeluaran'].map((type) => (
             <button
               key={type}
-              onClick={() => setFilterType(type as any)}
+              onClick={() => setFilterType(type === 'semua' ? 'all' : type === 'pendapatan' ? 'income' : 'expense')}
               className={cn(
                 "flex-1 lg:flex-none px-6 py-4 rounded-2xl font-bold text-sm capitalize transition-all border",
-                filterType === type 
+                (filterType === 'all' && type === 'semua') || (filterType === 'income' && type === 'pendapatan') || (filterType === 'expense' && type === 'pengeluaran')
                   ? "bg-emerald-500 text-white border-transparent shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
                   : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
               )}
@@ -253,7 +253,7 @@ export default function TransactionsPage() {
                     {tx.receiptUrl && (
                       <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-widest bg-emerald-500/10 px-2 py-1 rounded-md text-emerald-400 hover:bg-emerald-500/20 transition-colors mx-auto md:mx-0">
                         <ImageIcon className="w-3 h-3" />
-                        Receipt
+                        Kwitansi
                       </a>
                     )}
                   </div>
@@ -269,7 +269,7 @@ export default function TransactionsPage() {
                     "text-2xl font-black tracking-tighter",
                     tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                   )}>
-                    {tx.type === 'income' ? '+' : '-'}${tx.amount.toLocaleString()}
+                    {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString()}
                   </p>
                   <div className="flex items-center gap-2">
                     <button 
@@ -296,8 +296,8 @@ export default function TransactionsPage() {
             <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
               <Plus className="w-12 h-12" />
             </div>
-            <h3 className="text-xl font-bold">No transactions found</h3>
-            <p className="mt-2 font-medium">Try adjusting your filters or add a new entry.</p>
+            <h3 className="text-xl font-bold">Transaksi tidak ditemukan</h3>
+            <p className="mt-2 font-medium">Coba sesuaikan filter Anda atau tambahkan entri baru.</p>
           </div>
         )}
       </div>
@@ -320,7 +320,7 @@ export default function TransactionsPage() {
               className="relative w-full max-w-2xl bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/30">
-                <h2 className="text-2xl font-black text-white">{editingTransaction ? 'Edit Transaction' : 'New Transaction'}</h2>
+                <h2 className="text-2xl font-black text-white">{editingTransaction ? 'Ubah Transaksi' : 'Transaksi Baru'}</h2>
                 <button 
                   onClick={handleCloseModal}
                   className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"
@@ -382,49 +382,49 @@ export default function TransactionsPage() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Category</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Kategori</label>
                     <div className="relative">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select
                         {...register('category')}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white"
                       >
-                        <option value="" disabled className="bg-slate-900 text-white">Select Category</option>
+                        <option value="" disabled className="bg-slate-900 text-white">Pilih Kategori</option>
                         {CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Payment Method</label>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Metode Pembayaran</label>
                     <div className="relative">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select
                         {...register('paymentMethod')}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white"
                       >
-                        <option value="" disabled className="bg-slate-900 text-white">Select Method</option>
-                        {PAYMENT_METHODS.map(method => <option key={method} value={method} className="bg-slate-900 text-white">{method}</option>)}
+                        <option value="" disabled className="bg-slate-900 text-white">Pilih Metode</option>
+                        {PAYMENT_METHODS.map(method => <option key={method} value={method === 'Cash' ? 'Tunai' : method} className="bg-slate-900 text-white">{method === 'Cash' ? 'Tunai' : method}</option>)}
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Description</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Deskripsi</label>
                   <div className="relative">
                     <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                     <input
                       type="text"
                       {...register('description')}
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white"
-                      placeholder="Coffee with friends..."
+                      placeholder="Ngopi bersama teman..."
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Receipt (Optional)</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Kwitansi (Opsional)</label>
                   <div className="relative">
                     <input
                       type="file"
@@ -439,7 +439,7 @@ export default function TransactionsPage() {
                     >
                       <Upload className="w-8 h-8 text-slate-500 group-hover:text-emerald-400 mb-2" />
                       <span className="text-sm font-bold text-slate-500 group-hover:text-white text-center">
-                        {receiptFile ? receiptFile.name : 'Click to upload receipt photo'}
+                        {receiptFile ? receiptFile.name : 'Klik untuk mengunggah foto kwitansi'}
                       </span>
                     </label>
                   </div>
@@ -450,7 +450,7 @@ export default function TransactionsPage() {
                   disabled={isSubmitting || isUploading}
                   className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 >
-                  {isSubmitting || isUploading ? 'Processing...' : (editingTransaction ? 'Update Transaction' : 'Create Transaction')}
+                  {isSubmitting || isUploading ? 'Memproses...' : (editingTransaction ? 'Perbarui Transaksi' : 'Buat Transaksi')}
                 </button>
               </form>
             </motion.div>
