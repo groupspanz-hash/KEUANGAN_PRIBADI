@@ -1,10 +1,11 @@
 {
-  "projectId": "gen-lang-client-0053573543",
-  "appId": "1:776251810531:web:bf5eee32d910a4403c9bd6",
-  "apiKey": "AIzaSyCUFlb8r9Lv48OnbXm1g2H-VNQpT3XpMDw",
-  "authDomain": "gen-lang-client-0053573543.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-abedecd9-b202-4947-9ef1-e5e6f456079d",
-  "storageBucket": "gen-lang-client-0053573543.firebasestorage.app",
-  "messagingSenderId": "776251810531",
+  "projectId": "keuangan-pribadi-3ebf9",
+  "appId": "1:518844143711:web:6c07174657061869fda3ea",
+  "apiKey": "AIzaSyAMWr-toTwf78QOYahgCX0LJknc7ygkMnQ",
+  "authDomain": "keuangan-pribadi-3ebf9.firebaseapp.com",
+  "databaseURL": "https://keuangan-pribadi-3ebf9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "keuangan-pribadi-3ebf9.firebasestorage.app",
+  "messagingSenderId": "518844143711",
   "measurementId": ""
 }

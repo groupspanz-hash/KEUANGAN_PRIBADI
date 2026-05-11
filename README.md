@@ -50,7 +50,9 @@ npm run dev
 - Connect your GitHub repo to Vercel.
 - Set the environment variable `GEMINI_API_KEY`.
 - Vercel will automatically detect the Vite project and deploy.
-- Ensure the `vercel.json` is configured if you need custom routing (though standard Vite + Express boilerplate usually works with Vercel's Serverless Functions if configured correctly, but for this specific environment, it's already cloud-run ready).
+- **IMPORTANT**: After deployment, you MUST add your Vercel domain (e.g., `your-app.vercel.app`) to the **Authorized Domains** list in the Firebase Console:
+    - Go to **Authentication** > **Settings** > **Authorized domains**.
+    - Click **Add domain** and enter your Vercel URL.
 
 ## Folder Structure
 - `src/components`: Reusable UI components.
