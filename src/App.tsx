@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
 import { auth, db } from './firebase/config';
 import { useStore } from './store';
 import { Toaster } from 'react-hot-toast';
@@ -34,16 +34,27 @@ export default function App() {
   const { setUser, setLoading } = useStore();
 
   useEffect(() => {
+    // Initial connection test
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, '_health_check_', 'ping'));
+      } catch (error: any) {
+        if (error.message?.includes('offline')) {
+          console.warn("Firestore appears offline. Check console for database configuration instructions.");
+        }
+      }
+    };
+    testConnection();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
+      try {
+        if (firebaseUser) {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
             setUser(userDoc.data() as any);
           } else {
-            // New user from Google Login
             const userData = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -54,13 +65,16 @@ export default function App() {
             await setDoc(userDocRef, userData);
             setUser({ ...userData, createdAt: new Date() } as any);
           }
-        } catch (error) {
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        if (firebaseUser) {
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         }
-      } else {
-        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

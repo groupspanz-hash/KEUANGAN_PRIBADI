@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   createUserWithEmailAndPassword, 
@@ -8,56 +8,37 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
+import { useStore } from '../store';
 import { motion } from 'motion/react';
 import { Sparkles, Mail, Lock, User, UserPlus, Chrome, LayoutDashboard, ArrowRight } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { handleFirestoreError, OperationType } from '../firebase/utils';
 
 export default function RegisterPage() {
+  const { user } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(user, { displayName: name });
-      
-      const userData = {
-        uid: user.uid,
-        email: user.email,
-        displayName: name,
-        photoURL: null,
-        createdAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, 'users', user.uid), userData);
-      
-      toast.success('Akun berhasil dibuat!');
-      navigate('/dashboard');
-    } catch (error: any) {
-      if (error.code?.includes('permission')) {
-        handleFirestoreError(error, OperationType.WRITE, `users/${auth.currentUser?.uid}`);
-      } else {
-        toast.error(error.message);
-      }
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
     }
-  };
+  }, [user, navigate]);
 
   const handleGoogleLogin = async () => {
+    setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      toast.success('Login berhasil!');
+      toast.success('Pendaftaran berhasil!');
       navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,82 +58,32 @@ export default function RegisterPage() {
           <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
             <LayoutDashboard className="text-white w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight text-center leading-tight">Bergabung Bersama Kami</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight text-center leading-tight">Buat Akun Baru</h1>
           <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-2">Kecerdasan Keuangan Pribadi</p>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nama Lengkap</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
-                placeholder="John Doe"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Alamat Email</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
-                placeholder="nama@perusahaan.com"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kata Sandi</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
+        <div className="space-y-6">
           <button
-            type="submit"
+            onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.3)] mt-8"
+            className="w-full py-6 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-center gap-4 disabled:opacity-50 shadow-xl"
           >
-            {loading ? 'Membuat akun...' : 'Selesaikan Pendaftaran'}
-            {!loading && <ArrowRight className="w-5 h-5" />}
+            {loading ? (
+              <span className="animate-pulse">Menghubungkan...</span>
+            ) : (
+              <>
+                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-1 font-sans text-[10px] text-black font-black border border-slate-200">G</div>
+                Daftar dengan Google
+              </>
+            )}
           </button>
-        </form>
 
-        <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800"></div></div>
-          <div className="relative flex justify-center text-[10px] uppercase font-black tracking-[0.2em] text-slate-500">
-            <span className="bg-[#161B22] px-4">Atau lanjutkan dengan</span>
-          </div>
+          <p className="text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed">
+            Data Anda akan disinkronkan secara aman<br />menggunakan akun Google Anda.
+          </p>
         </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-700 transition-colors flex items-center justify-center gap-4"
-        >
-          <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center p-1 font-sans text-[10px] text-black font-black">G</div>
-          Akses Google
-        </button>
-
-        <p className="mt-10 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
+        <p className="mt-12 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
           Sudah punya akun?{' '}
           <Link to="/login" className="text-emerald-400 hover:underline">
             Masuk

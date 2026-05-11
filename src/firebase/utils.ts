@@ -27,8 +27,14 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  let errorMessage = error instanceof Error ? error.message : String(error);
+  
+  if (errorMessage.includes('Failed to get document because the client is offline') || errorMessage.includes('offline')) {
+    errorMessage = 'Koneksi ke database gagal (Offline). PASTIKAN: \n1. Anda sudah klik "Create Database" di Firebase Console.\n2. Firestore diaktifkan untuk Project ID ini.\n3. Domain Vercel sudah didaftarkan di "Authorized Domains" di Firebase Authentication Settings.';
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
