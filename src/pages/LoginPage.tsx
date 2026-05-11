@@ -28,9 +28,14 @@ export default function LoginPage() {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast.success('Login berhasil!');
-      navigate('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        toast.success('Login berhasil!');
+        // Small delay to allow store update then navigate
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 100);
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {

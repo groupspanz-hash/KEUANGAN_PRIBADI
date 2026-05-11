@@ -32,9 +32,13 @@ export default function RegisterPage() {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast.success('Pendaftaran berhasil!');
-      navigate('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        toast.success('Pendaftaran berhasil!');
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 100);
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {
