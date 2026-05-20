@@ -34,7 +34,7 @@ export default function App() {
   const { setUser, setLoading } = useStore();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       try {
         if (firebaseUser) {
           // Set basic user info first so the app isn't stuck if Firestore is slow/offline
@@ -43,35 +43,42 @@ export default function App() {
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || '',
             photoURL: firebaseUser.photoURL || '',
+            createdAt: new Date(),
           };
           
           setUser(basicUser as any);
           setLoading(false); // Enable navigation as soon as we have basic info
 
-          try {
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const userDoc = await getDoc(userDocRef);
-            
-            if (userDoc.exists()) {
-              setUser(userDoc.data() as any);
-            } else {
-              const userData = {
-                ...basicUser,
-                createdAt: serverTimestamp(),
-              };
-              await setDoc(userDocRef, userData);
-              setUser({ ...userData, createdAt: new Date() } as any);
+          // Fetch or create user doc in background - DO NOT AWAIT
+          const syncUser = async () => {
+            try {
+              const userDocRef = doc(db, 'users', firebaseUser.uid);
+              const userDoc = await getDoc(userDocRef);
+              
+              if (userDoc.exists()) {
+                setUser(userDoc.data() as any);
+              } else {
+                const userData = {
+                  uid: firebaseUser.uid,
+                  email: firebaseUser.email || '',
+                  displayName: firebaseUser.displayName || '',
+                  photoURL: firebaseUser.photoURL || '',
+                  createdAt: serverTimestamp(),
+                };
+                await setDoc(userDocRef, userData);
+                setUser({ ...userData, createdAt: new Date() } as any);
+              }
+            } catch (error: any) {
+              console.warn("Firestore background sync failed (Offline):", error.message);
             }
-          } catch (error: any) {
-            console.error("Firestore sync error:", error.message);
-          }
+          };
+          syncUser();
         } else {
           setUser(null);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Auth sync error:", error);
-        // Don't call handleFirestoreError specifically here to avoid blocking UI if it's just a background sync failure
-      } finally {
         setLoading(false);
       }
     });

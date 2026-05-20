@@ -26,11 +26,12 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null, shouldThrow: boolean = true) {
   let errorMessage = error instanceof Error ? error.message : String(error);
   
   if (errorMessage.includes('Failed to get document because the client is offline') || errorMessage.includes('offline')) {
-    errorMessage = 'Koneksi ke database gagal (Offline). PASTIKAN: \n1. Anda sudah klik "Create Database" di Firebase Console.\n2. Firestore diaktifkan untuk Project ID ini.\n3. Domain Vercel sudah didaftarkan di "Authorized Domains" di Firebase Authentication Settings.';
+    errorMessage = 'Koneksi ke database lambat atau offline. Beberapa data mungkin tidak muncul atau tertunda.';
+    console.warn("Firestore Offline:", errorMessage);
   }
 
   const errInfo: FirestoreErrorInfo = {
@@ -49,8 +50,12 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  
+  console.error('Firestore Error Details: ', JSON.stringify(errInfo));
+  
+  if (shouldThrow) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }
 
 export function cn(...inputs: (string | undefined | null | boolean | Record<string, boolean>)[]) {

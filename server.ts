@@ -12,7 +12,82 @@ const PORT = 3000;
 app.use(express.json());
 
 // Gemini API setup for insights
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const genAI = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || "",
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
+
+app.post("/api/ai/scan-receipt", async (req, res) => {
+  try {
+    const { image } = req.body;
+    
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Gemini API key not configured" });
+    }
+
+    if (!image) {
+      return res.status(400).json({ error: "Image data is required" });
+    }
+
+    let base64Data = image;
+    let mimeType = "image/jpeg";
+
+    if (image.startsWith("data:")) {
+      const parts = image.split(";base64,");
+      if (parts.length === 2) {
+        mimeType = parts[0].substring(5); // e.g. "image/png"
+        base64Data = parts[1];
+      }
+    }
+
+    const imagePart = {
+      inlineData: {
+        data: base64Data,
+        mimeType: mimeType
+      }
+    };
+
+    const promptText = `
+      Analisis foto struk pembelian atau nota belanja berikut dan ekstrak informasi transaksi penting secara detail.
+      
+      Kembalikan data dalam format JSON murni dengan struktur persis seperti berikut:
+      {
+        "amount": <number, total pengeluaran final/grand total dalam Rupiah, bulatkan ke bilangan bulat terdekat>,
+        "type": "expense",
+        "category": "<pilih salah satu dari: 'Makan', 'Transportasi', 'Tagihan', 'Bisnis', 'Investasi', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Pembayaran Hutang', 'Lainnya'>",
+        "description": "<string, ringkasan nama merchant/toko dan item utama yang dibeli, maksimal 5-7 kata dalam Bahasa Indonesia>",
+        "date": "<string, tanggal transaksi dalam format YYYY-MM-DD>"
+      }
+
+      Aturan penting:
+      - PASTIKAN kategori hanya yang tertera di list di atas. Jangan buat kategori baru.
+      - Jika struk berkaitan dengan pembayaran cicilan, kartu kredit, hutang atau pinjaman, masukkan ke kategori "Pembayaran Hutang".
+      - Jika tanggal tidak tertera di struk, pakailah tanggal hari ini ("2026-05-20" atau silakan sesuaikan).
+    `;
+
+    const textPart = {
+      text: promptText
+    };
+
+    const result = await genAI.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: [imagePart, textPart],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    const responseText = result.text;
+    res.json(JSON.parse(responseText));
+  } catch (error: any) {
+    console.error("AI Scan Receipt Error:", error);
+    res.status(500).json({ error: "Gagal memindai struk/nota dengan AI" });
+  }
+});
 
 app.post("/api/ai/insights", async (req, res) => {
   try {

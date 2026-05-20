@@ -47,7 +47,7 @@ export default function BudgetPage() {
       const bSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Budget[];
       setBudgets(bSet);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'budgets');
+      handleFirestoreError(error, OperationType.LIST, 'budgets', false);
     });
     return () => unsubscribe();
   }, [user, selectedMonth, setBudgets]);
@@ -213,7 +213,7 @@ export default function BudgetPage() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah Anggaran (Rp)</label>
                     <div className="relative">
-                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-500 select-none">Rp</span>
                       <input type="number" name="amount" defaultValue={editingBudget?.amount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="misal: 500000" required />
                     </div>
                   </div>

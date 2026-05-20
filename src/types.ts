@@ -21,6 +21,7 @@ export interface Transaction {
   description: string;
   date: Timestamp | Date;
   receiptUrl?: string;
+  debtId?: string;
   createdAt: Timestamp | Date;
 }
 
@@ -72,6 +73,7 @@ export type Category =
   | 'Hiburan'
   | 'Kesehatan'
   | 'Pendidikan'
+  | 'Pembayaran Hutang'
   | 'Lainnya';
 
 export const CATEGORIES: Category[] = [
@@ -83,6 +85,7 @@ export const CATEGORIES: Category[] = [
   'Hiburan',
   'Kesehatan',
   'Pendidikan',
+  'Pembayaran Hutang',
   'Lainnya'
 ];
 

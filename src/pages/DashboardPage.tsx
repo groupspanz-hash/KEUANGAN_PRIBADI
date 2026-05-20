@@ -60,7 +60,7 @@ export default function DashboardPage() {
       })) as Transaction[];
       setTransactions(txs);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'transactions');
+      handleFirestoreError(error, OperationType.LIST, 'transactions', false);
     });
 
     return () => unsubscribe();
