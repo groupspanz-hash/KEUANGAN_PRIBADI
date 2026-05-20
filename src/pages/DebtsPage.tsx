@@ -28,12 +28,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Debt } from '../types';
-import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
+import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
 
 export default function DebtsPage() {
   const { user, debts, setDebts } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -49,29 +50,38 @@ export default function DebtsPage() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const debtData = {
-      userId: user?.uid,
-      name: formData.get('name') as string,
-      amount: Number(formData.get('amount')),
-      type: formData.get('type') as 'debt' | 'loan',
-      status: formData.get('status') as 'unpaid' | 'paid',
-      dueDate: formData.get('dueDate') ? Timestamp.fromDate(new Date(formData.get('dueDate') as string)) : null,
-      updatedAt: serverTimestamp(),
-    };
-
+    if (!user) return;
+    setIsSaving(true);
+    
     try {
+      const formData = new FormData(e.currentTarget);
+      const dueDateVal = formData.get('dueDate') as string;
+      const dueDate = (dueDateVal && dueDateVal.trim() !== '') ? Timestamp.fromDate(new Date(dueDateVal + 'T00:00:00')) : null;
+
+      const debtData = {
+        userId: user.uid,
+        name: formData.get('name') as string,
+        amount: Number(formData.get('amount')),
+        type: formData.get('type') as 'debt' | 'loan',
+        status: formData.get('status') as 'unpaid' | 'paid',
+        dueDate,
+        updatedAt: serverTimestamp(),
+      };
+
       if (editingDebt?.id) {
-        await updateDoc(doc(db, 'debts', editingDebt.id), debtData);
+        updateDoc(doc(db, 'debts', editingDebt.id), debtData).catch(e => console.error("Update debt failed:", e));
         toast.success('Informasi diperbarui');
       } else {
-        await addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() });
+        addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() }).catch(e => console.error("Add debt failed:", e));
         toast.success('Hutang/Pinjaman dicatat');
       }
       setIsModalOpen(false);
       setEditingDebt(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'debts');
+      handleFirestoreError(error, OperationType.WRITE, 'debts', false);
+      toast.error('Gagal menyimpan catatan hutang/pinjaman. Silakan coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -79,10 +89,10 @@ export default function DebtsPage() {
     if (!debt.id) return;
     const newStatus = debt.status === 'paid' ? 'unpaid' : 'paid';
     try {
-      await updateDoc(doc(db, 'debts', debt.id), { 
+      updateDoc(doc(db, 'debts', debt.id), { 
         status: newStatus,
         updatedAt: serverTimestamp()
-      });
+      }).catch(e => console.error("Toggle debt status failed:", e));
       toast.success(`Ditandai sebagai ${newStatus === 'paid' ? 'sudah dibayar' : 'belum dibayar'}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'debts');
@@ -155,7 +165,7 @@ export default function DebtsPage() {
                 Ubah
               </button>
               <button 
-                onClick={async () => { if(debt.id && window.confirm('Hapus?')) { await deleteDoc(doc(db, 'debts', debt.id)); toast.success('Dihapus'); } }}
+                onClick={() => { if(debt.id) { deleteDoc(doc(db, 'debts', debt.id)).catch(e => console.error(e)); toast.success('Dihapus'); } }}
                 className="px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -168,47 +178,100 @@ export default function DebtsPage() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setIsModalOpen(false); setEditingDebt(null); }} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => { if (!isSaving) { setIsModalOpen(false); setEditingDebt(null); } }} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }} 
+              className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
+            >
               <div className="p-8 pb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-black text-white">{editingDebt ? 'Perbarui Entri' : 'Kewajiban Baru'}</h2>
-                <button onClick={() => { setIsModalOpen(false); setEditingDebt(null); }} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+                <button 
+                  onClick={() => { if (!isSaving) { setIsModalOpen(false); setEditingDebt(null); } }} 
+                  disabled={isSaving}
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white disabled:opacity-50"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Orang / Institusi</label>
-                    <input type="text" name="name" defaultValue={editingDebt?.name} required className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white" placeholder="misal: Bank ABC" />
+                    <input 
+                      type="text" 
+                      name="name" 
+                      defaultValue={editingDebt?.name} 
+                      required 
+                      disabled={isSaving}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                      placeholder="misal: Bank ABC" 
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah (Rp)</label>
-                      <input type="number" name="amount" defaultValue={editingDebt?.amount} required className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white" placeholder="1000000" />
+                      <input 
+                        type="number" 
+                        name="amount" 
+                        defaultValue={editingDebt?.amount} 
+                        required 
+                        disabled={isSaving}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                        placeholder="1000000" 
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tanggal Jatuh Tempo</label>
-                      <input type="date" name="dueDate" defaultValue={editingDebt?.dueDate ? format(editingDebt.dueDate instanceof Timestamp ? editingDebt.dueDate.toDate() : new Date(editingDebt.dueDate), 'yyyy-MM-dd') : ''} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white" />
+                      <input 
+                        type="date" 
+                        name="dueDate" 
+                        defaultValue={editingDebt?.dueDate ? format(editingDebt.dueDate instanceof Timestamp ? editingDebt.dueDate.toDate() : new Date(editingDebt.dueDate), 'yyyy-MM-dd') : ''} 
+                        disabled={isSaving}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tipe</label>
-                      <select name="type" defaultValue={editingDebt?.type || 'debt'} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white">
+                      <select 
+                        name="type" 
+                        defaultValue={editingDebt?.type || 'debt'} 
+                        disabled={isSaving}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
+                      >
                         <option value="debt">Hutang (Saya berhutang pada mereka)</option>
                         <option value="loan">Pinjaman (Mereka berhutang pada saya)</option>
                       </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
-                      <select name="status" defaultValue={editingDebt?.status || 'unpaid'} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white">
+                      <select 
+                        name="status" 
+                        defaultValue={editingDebt?.status || 'unpaid'} 
+                        disabled={isSaving}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
+                      >
                         <option value="unpaid">Belum Dibayar</option>
                         <option value="paid">Sudah Dibayar</option>
                       </select>
                     </div>
                   </div>
                 </div>
-                <button type="submit" className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-105 transition-transform">
-                  Simpan Entri
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-105 transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                >
+                  {isSaving ? 'Memproses...' : 'Simpan Entri'}
                 </button>
               </form>
             </motion.div>

@@ -77,7 +77,7 @@ service cloud.firestore {
         incoming().updatedAt == request.time &&
         (
           incoming().diff(existing()).affectedKeys().hasOnly([
-            'amount', 'type', 'category', 'paymentMethod', 'description', 'date', 'receiptUrl', 'updatedAt'
+            'userId', 'amount', 'type', 'category', 'paymentMethod', 'description', 'date', 'receiptUrl', 'debtId', 'updatedAt'
           ])
         );
         
@@ -147,7 +147,7 @@ service cloud.firestore {
       function isValidDebt(data) {
         return data.userId == request.auth.uid &&
           data.name is string && data.name.size() <= 200 &&
-          data.amount is number && data.amount > 0 &&
+          data.amount is number && data.amount >= 0 &&
           data.type in ['debt', 'loan'] &&
           data.status in ['unpaid', 'paid'];
       }
@@ -164,7 +164,7 @@ service cloud.firestore {
         isValidDebt(incoming()) &&
         incoming().userId == existing().userId &&
         incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'amount', 'dueDate', 'type', 'status', 'updatedAt']);
+        incoming().diff(existing()).affectedKeys().hasOnly(['userId', 'name', 'amount', 'dueDate', 'type', 'status', 'updatedAt']);
         
       allow delete: if isSignedIn() && isValidId(debtId) && existing().userId == request.auth.uid;
     }

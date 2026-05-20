@@ -67,15 +67,19 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 mt-auto">
-        <div className="bg-emerald-950/20 rounded-2xl p-4 mb-4 border border-emerald-500/10">
-          <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 px-1">Wawasan AI</p>
-          <p className="text-sm text-slate-300 italic leading-relaxed">"Setiap rupiah yang Anda tabung hari ini adalah langkah menuju kebebasan masa depan Anda."</p>
+      <div className="p-3 mt-auto border-t border-slate-900 bg-[#0F1218]/90">
+        {/* Compact Wawasan AI */}
+        <div className="bg-emerald-950/20 rounded-xl p-3 mb-2.5 border border-emerald-500/10">
+          <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em] mb-1 px-0.5">Wawasan AI</p>
+          <p className="text-[11px] text-slate-300 italic leading-normal">
+            "Setiap rupiah yang Anda tabung hari ini adalah langkah menuju kebebasan masa depan Anda."
+          </p>
         </div>
 
-        <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold ring-2 ring-white/10 overflow-hidden">
+        {/* Compact Profile Card */}
+        <div className="bg-white/5 rounded-xl p-2.5 mb-2.5 border border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-extrabold text-xs shrink-0 overflow-hidden">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full object-cover" />
               ) : (
@@ -83,18 +87,19 @@ export default function Sidebar() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user?.displayName || 'User'}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              <p className="text-xs font-bold text-white truncate leading-tight">{user?.displayName || 'User'}</p>
+              <p className="text-[10px] text-slate-400 truncate mt-0.5">{user?.email}</p>
             </div>
           </div>
         </div>
 
+        {/* Compact Logout Button */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-400/5 transition-all duration-300"
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-rose-500/10 text-xs font-black uppercase tracking-wider transition-all duration-300"
         >
-          <LogOut className="w-5 h-5" />
-          <span className="text-sm font-medium">Keluar</span>
+          <LogOut className="w-4 h-4 text-slate-500 hover:text-red-400" />
+          <span>Keluar Sesi</span>
         </button>
       </div>
     </aside>

@@ -64,30 +64,39 @@ export interface AIInsight {
   createdAt: Timestamp | Date;
 }
 
-export type Category = 
-  | 'Makan'
-  | 'Transportasi'
-  | 'Tagihan'
-  | 'Bisnis'
-  | 'Investasi'
-  | 'Hiburan'
-  | 'Kesehatan'
-  | 'Pendidikan'
-  | 'Pembayaran Hutang'
-  | 'Lainnya';
-
-export const CATEGORIES: Category[] = [
-  'Makan',
-  'Transportasi',
-  'Tagihan',
+export const INCOME_CATEGORIES = [
+  'Gaji',
+  'Bonus',
   'Bisnis',
   'Investasi',
-  'Hiburan',
+  'Hadiah',
+  'Penjualan',
+  'Lain-lain'
+];
+
+export const EXPENSE_CATEGORIES = [
+  'Makanan',
+  'Transportasi',
   'Kesehatan',
   'Pendidikan',
+  'Kebutuhan Rumah',
+  'Internet & Pulsa',
+  'Listrik & Air',
+  'Loundry',
   'Pembayaran Hutang',
-  'Lainnya'
+  'Investasi',
+  'Sedekah',
+  'Orang Tua',
+  'Liburan',
+  'Perawatan',
+  'Pakaian',
+  'Pribadi',
+  'Lain-lain'
 ];
+
+export const CATEGORIES = Array.from(new Set([...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES]));
+
+export type Category = string;
 
 export const PAYMENT_METHODS = [
   'Tunai',

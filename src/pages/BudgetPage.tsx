@@ -22,18 +22,21 @@ import {
   X,
   AlertTriangle,
   TrendingDown,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { toast } from 'react-hot-toast';
-import { Budget, CATEGORIES } from '../types';
-import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
+import { Budget, EXPENSE_CATEGORIES } from '../types';
+import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
 
 export default function BudgetPage() {
   const { user, budgets, setBudgets, transactions } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
 
   useEffect(() => {
@@ -54,27 +57,31 @@ export default function BudgetPage() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const budgetData = {
-      userId: user?.uid,
-      category: formData.get('category') as string,
-      amount: Number(formData.get('amount')),
-      month: selectedMonth,
-      updatedAt: serverTimestamp(),
-    };
-
+    setIsSaving(true);
+    
     try {
+      const formData = new FormData(e.currentTarget);
+      const budgetData = {
+        userId: user?.uid,
+        category: formData.get('category') as string,
+        amount: Number(formData.get('amount')),
+        month: selectedMonth,
+        updatedAt: serverTimestamp(),
+      };
+
       if (editingBudget?.id) {
-        await updateDoc(doc(db, 'budgets', editingBudget.id), budgetData);
+        updateDoc(doc(db, 'budgets', editingBudget.id), budgetData).catch(e => console.error("Update budget failed:", e));
         toast.success('Anggaran diperbarui');
       } else {
-        await addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
+        addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() }).catch(e => console.error("Add budget failed:", e));
         toast.success('Anggaran ditetapkan');
       }
       setIsModalOpen(false);
       setEditingBudget(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'budgets');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -135,9 +142,20 @@ export default function BudgetPage() {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => { setEditingBudget(budget); setIsModalOpen(true); }}
-                    className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                    title="Ubah Anggaran"
+                    className="p-2 hover:bg-slate-800 rounded-lg text-emerald-500 hover:text-emerald-400 transition-colors"
                   >
-                    <Plus className="w-4 h-4 rotate-45" />
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      deleteDoc(doc(db, 'budgets', budget.id)).catch(e => console.error(e)); 
+                      toast.success('Anggaran dihapus'); 
+                    }}
+                    title="Hapus Anggaran"
+                    className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 hover:text-rose-400 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -193,11 +211,17 @@ export default function BudgetPage() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!isSaving) setIsModalOpen(false); }} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl">
               <div className="p-8 pb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-black text-white">{editingBudget ? 'Ubah Anggaran' : 'Atur Anggaran Kategori'}</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+                <button 
+                  onClick={() => { if (!isSaving) setIsModalOpen(false); }}
+                  disabled={isSaving}
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white disabled:opacity-50"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
@@ -205,8 +229,8 @@ export default function BudgetPage() {
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Kategori</label>
                     <div className="relative">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <select name="category" defaultValue={editingBudget?.category || ''} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white">
-                        {CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
+                      <select name="category" defaultValue={editingBudget?.category || ''} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white disabled:opacity-50">
+                        {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
                       </select>
                     </div>
                   </div>
@@ -214,12 +238,16 @@ export default function BudgetPage() {
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah Anggaran (Rp)</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-500 select-none">Rp</span>
-                      <input type="number" name="amount" defaultValue={editingBudget?.amount} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white" placeholder="misal: 500000" required />
+                      <input type="number" name="amount" defaultValue={editingBudget?.amount} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: 500000" required />
                     </div>
                   </div>
                 </div>
-                <button type="submit" className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-                  {editingBudget ? 'Perbarui Anggaran' : 'Atur Anggaran'}
+                <button 
+                  type="submit" 
+                  disabled={isSaving}
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center"
+                >
+                  {isSaving ? 'Memproses...' : (editingBudget ? 'Perbarui Anggaran' : 'Atur Anggaran')}
                 </button>
               </form>
             </motion.div>

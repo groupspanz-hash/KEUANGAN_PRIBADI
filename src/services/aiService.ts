@@ -9,12 +9,17 @@ export async function getAIInsights(transactions: any[], userProfile: any) {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch AI insights');
+      let errMessage = 'Failed to fetch AI insights';
+      try {
+        const errorData = await response.json();
+        if (errorData.error) errMessage = errorData.error;
+      } catch (e) {}
+      throw new Error(errMessage);
     }
 
     return await response.json();
   } catch (error) {
     console.error('AI Service Error:', error);
-    return [];
+    throw error;
   }
 }

@@ -61,3 +61,10 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 export function cn(...inputs: (string | undefined | null | boolean | Record<string, boolean>)[]) {
   return inputs.filter(Boolean).join(' ');
 }
+
+export function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000, errorMessage: string = 'Koneksi lambat atau terputus. Silakan coba lagi.'): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(errorMessage)), timeoutMs))
+  ]);
+}

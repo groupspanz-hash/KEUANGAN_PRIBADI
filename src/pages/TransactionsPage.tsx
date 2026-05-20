@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
 import { 
   collection, 
   addDoc, 
@@ -7,6 +8,7 @@ import {
   deleteDoc, 
   doc, 
   getDoc,
+  getDocFromCache,
   query, 
   where, 
   orderBy, 
@@ -46,7 +48,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'react-hot-toast';
-import { Transaction, CATEGORIES, PAYMENT_METHODS } from '../types';
+import { Transaction, CATEGORIES, INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT_METHODS } from '../types';
 
 const transactionSchema = z.object({
   amount: z.number().min(0.01, 'Jumlah harus lebih besar dari 0'),
@@ -62,6 +64,9 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export default function TransactionsPage() {
   const { user, transactions, setTransactions, debts, setDebts } = useStore();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,17 +74,35 @@ export default function TransactionsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   
-  // AI Receipt scanning state
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanFile, setScanFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('add') === 'true') {
+      setIsModalOpen(true);
+      navigate('/transactions', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       type: 'expense',
+      category: '',
+      paymentMethod: '',
+      description: '',
       date: format(new Date(), 'yyyy-MM-dd')
     }
   });
+
+  const onFormError = (errors: any) => {
+    Object.keys(errors).forEach((key) => {
+      const err = errors[key as keyof typeof errors];
+      if (err?.message) {
+        toast.error(err.message);
+      }
+    });
+  };
 
   const selectedType = watch('type');
   const selectedCategory = watch('category');
@@ -119,118 +142,62 @@ export default function TransactionsPage() {
     return () => unsubscribe();
   }, [user, setTransactions]);
 
-  const handleAIScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    setScanFile(file);
-    setIsScanning(true);
-    setReceiptFile(file);
-
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        try {
-          const base64Data = reader.result as string;
-
-          const response = await fetch('/api/ai/scan-receipt', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ image: base64Data }),
-          });
-
-          if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || 'Gagal memproses struk');
-          }
-
-          const result = await response.json();
-
-          if (result.amount) {
-            setValue('amount', Number(result.amount));
-          }
-          if (result.category) {
-            setValue('category', result.category);
-          }
-          if (result.description) {
-            setValue('description', result.description);
-          }
-          if (result.date) {
-            setValue('date', result.date);
-          }
-          setValue('type', 'expense');
-
-          toast.success('Struk berhasil dipindai oleh AI! Silakan cek kembali data di bawah.');
-        } catch (error: any) {
-          console.error("AI Scan processing error:", error);
-          toast.error(error.message || 'Gagal memindai struk dengan AI');
-        } finally {
-          setIsScanning(false);
-          setScanFile(null);
-        }
-      };
-      reader.onerror = () => {
-        toast.error('Gagal membaca file gambar');
-        setIsScanning(false);
-        setScanFile(null);
-      };
-    } catch (err) {
-      console.error("Reader error:", err);
-      toast.error('Gagal memproses file gambar');
-      setIsScanning(false);
-      setScanFile(null);
-    }
-  };
 
   const onSubmit = async (data: TransactionFormData) => {
     if (!user) return;
     
-    let receiptUrl = editingTransaction?.receiptUrl || '';
-    
-    if (receiptFile) {
-      setIsUploading(true);
-      try {
-        const fileRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${receiptFile.name}`);
-        const snapshot = await uploadBytes(fileRef, receiptFile);
-        receiptUrl = await getDownloadURL(snapshot.ref);
-      } catch (error) {
-        toast.error('Gagal mengunggah kwitansi');
-        return;
-      } finally {
-        setIsUploading(false);
-      }
+    if (data.category === 'Pembayaran Hutang' && !data.debtId) {
+      toast.error('Silakan hubungkan dengan akun hutang yang ingin dikurangi/ditambah');
+      return;
     }
 
-    const txData = {
-      userId: user.uid,
-      amount: data.amount,
-      type: data.type,
-      category: data.category,
-      paymentMethod: data.paymentMethod,
-      description: data.description,
-      date: Timestamp.fromDate(new Date(data.date)),
-      receiptUrl,
-      debtId: data.category === 'Pembayaran Hutang' ? (data.debtId || '') : '',
-      updatedAt: serverTimestamp(),
-    };
-
+    setIsSaving(true);
     try {
+      let receiptUrl = editingTransaction?.receiptUrl || '';
+      
+      if (receiptFile) {
+        setIsUploading(true);
+        try {
+          const fileRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${receiptFile.name}`);
+          const snapshot = await withTimeout(uploadBytes(fileRef, receiptFile), 15000, 'Gagal mengunggah gambar. Waktu terlampaui.');
+          receiptUrl = await getDownloadURL(snapshot.ref);
+        } catch (error) {
+          throw new Error('Gagal mengunggah kwitansi');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      const parsedDate = new Date(data.date + 'T00:00:00');
+      const finalDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+
+      const txData = {
+        userId: user.uid,
+        amount: data.amount,
+        type: data.type,
+        category: data.category,
+        paymentMethod: data.paymentMethod,
+        description: data.description,
+        date: Timestamp.fromDate(finalDate),
+        receiptUrl,
+        debtId: data.category === 'Pembayaran Hutang' ? (data.debtId || '') : '',
+        updatedAt: serverTimestamp(),
+      };
+
       // 1. Revert previous debt association if editing an existing transaction
       if (editingTransaction?.id && editingTransaction.category === 'Pembayaran Hutang' && editingTransaction.debtId) {
         try {
           const oldDebtRef = doc(db, 'debts', editingTransaction.debtId);
-          const oldDebtSnap = await getDoc(oldDebtRef);
-          if (oldDebtSnap.exists()) {
+          const oldDebtSnap = await getDocFromCache(oldDebtRef).catch(() => null);
+          if (oldDebtSnap && oldDebtSnap.exists()) {
             const oldDebtData = oldDebtSnap.data();
             const revertedAmount = (oldDebtData.amount || 0) + editingTransaction.amount;
-            await updateDoc(oldDebtRef, {
+            updateDoc(oldDebtRef, {
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
               updatedAt: serverTimestamp()
-            });
+            }).catch(e => console.error("Revert old debt failed:", e));
           }
         } catch (e) {
           console.error("Failed to revert old debt payment:", e);
@@ -239,35 +206,37 @@ export default function TransactionsPage() {
 
       // 2. Save / Update Transaction
       if (editingTransaction?.id) {
-        await updateDoc(doc(db, 'transactions', editingTransaction.id), txData);
+        updateDoc(doc(db, 'transactions', editingTransaction.id), txData).catch(e => console.error("Update tx failed:", e));
         toast.success('Transaksi diperbarui');
       } else {
-        await addDoc(collection(db, 'transactions'), {
+        addDoc(collection(db, 'transactions'), {
           ...txData,
           createdAt: serverTimestamp(),
-        });
+        }).catch(e => console.error("Add tx failed:", e));
         toast.success('Transaksi ditambahkan');
       }
 
       // 3. Set/apply new debt payment logic if category is 'Pembayaran Hutang' and debtId is chosen
       if (data.category === 'Pembayaran Hutang' && data.debtId) {
         const debtRef = doc(db, 'debts', data.debtId);
-        const debtSnap = await getDoc(debtRef);
-        if (debtSnap.exists()) {
-          const debtData = debtSnap.data();
-          const newAmount = Math.max(0, (debtData.amount || 0) - data.amount);
-          await updateDoc(debtRef, {
+        const debtToUpdate = debts.find((d: any) => d.id === data.debtId);
+        if (debtToUpdate) {
+          const newAmount = Math.max(0, (debtToUpdate.amount || 0) - data.amount);
+          updateDoc(debtRef, {
             amount: newAmount,
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
-          });
+          }).catch(e => console.error("Update debt failed:", e));
           toast.success(`Hutang berkurang sebesar Rp${data.amount.toLocaleString()}. Sisa: Rp${newAmount.toLocaleString()}`);
         }
       }
 
       handleCloseModal();
-    } catch (error) {
-      toast.error('Gagal menyimpan transaksi');
+    } catch (error: any) {
+      console.error("Submit transaction error:", error);
+      toast.error('Gagal menyimpan transaksi: ' + (error?.message || error));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -289,21 +258,20 @@ export default function TransactionsPage() {
 
   const handleDelete = async (tx: Transaction) => {
     if (!tx.id) return;
-    if (window.confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
-      try {
-        // Revert debt reduction if applicable
+    try {
+      // Revert debt reduction if applicable
         if (tx.category === 'Pembayaran Hutang' && tx.debtId) {
           try {
             const debtRef = doc(db, 'debts', tx.debtId);
-            const debtSnap = await getDoc(debtRef);
-            if (debtSnap.exists()) {
+            const debtSnap = await getDocFromCache(debtRef).catch(() => null);
+            if (debtSnap && debtSnap.exists()) {
               const debtData = debtSnap.data();
               const revertedAmount = (debtData.amount || 0) + tx.amount;
-              await updateDoc(debtRef, {
+              updateDoc(debtRef, {
                 amount: revertedAmount,
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
-              });
+              }).catch(e => console.error("Restore debt failed:", e));
               toast.success(`Saldo Hutang dikembalikan sebesar Rp${tx.amount.toLocaleString()}`);
             }
           } catch (e) {
@@ -311,21 +279,30 @@ export default function TransactionsPage() {
           }
         }
 
-        await deleteDoc(doc(db, 'transactions', tx.id));
+        deleteDoc(doc(db, 'transactions', tx.id)).catch(e => console.error("Delete tx failed:", e));
         toast.success('Transaksi dihapus');
       } catch (error) {
         toast.error('Hapus gagal');
       }
-    }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingTransaction(null);
     setReceiptFile(null);
-    setScanFile(null);
-    setIsScanning(false);
-    reset();
+    try {
+      reset({
+        type: 'expense',
+        category: '',
+        paymentMethod: '',
+        description: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        amount: undefined,
+        debtId: ''
+      });
+    } catch (e) {
+      console.error("Resetting form fields failed:", e);
+    }
   };
 
   const filteredTransactions = transactions.filter(tx => {
@@ -484,55 +461,7 @@ export default function TransactionsPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                {/* AI Instant Receipt Reader Block */}
-                {!editingTransaction && (
-                  <div className="bg-slate-950/40 border border-emerald-500/25 rounded-2xl p-6 space-y-4 shadow-[0_0_20px_rgba(16,185,129,0.05)]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                          <Sparkles className="w-5 h-5 animate-pulse" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-black text-white leading-normal">Pindai Nota / Struk dengan AI</h4>
-                          <p className="text-[10px] text-slate-400 font-medium">Unggah foto struk untuk mengisi otomatis seluruh formulir secara instan</p>
-                        </div>
-                      </div>
-                      {isScanning && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-md animate-pulse">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          Memproses
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAIScan}
-                        disabled={isScanning}
-                        id="ai-receipt-scan"
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="ai-receipt-scan"
-                        className={cn(
-                          "w-full border border-dashed rounded-xl py-3 px-4 flex items-center justify-center gap-2 cursor-pointer transition-all",
-                          isScanning 
-                            ? "bg-slate-900/50 border-slate-800 pointer-events-none opacity-50 text-slate-500" 
-                            : "bg-slate-900 border-slate-800 hover:bg-slate-800/40 hover:border-emerald-500/40 text-slate-300 group"
-                        )}
-                      >
-                        <Camera className="w-4 h-4 text-slate-400 group-hover:text-emerald-400" />
-                        <span className="text-xs font-bold text-slate-300">
-                          {scanFile ? scanFile.name : 'Pilih Foto Struk / Nota Toko'}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
+              <form onSubmit={handleSubmit(onSubmit, onFormError)} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 gap-4">
                   {['expense', 'income'].map((type) => (
                     <button
@@ -587,15 +516,16 @@ export default function TransactionsPage() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Kategori</label>
                     <div className="relative">
-                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select
                         {...register('category')}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
                       >
                         <option value="" disabled className="bg-slate-900 text-white">Pilih Kategori</option>
-                        {CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
+                        {(selectedType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
                       </select>
                     </div>
+                    {errors.category && <p className="text-rose-400 text-xs font-bold mt-1 px-1">{errors.category.message}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -610,17 +540,18 @@ export default function TransactionsPage() {
                         {PAYMENT_METHODS.map(method => <option key={method} value={method === 'Cash' ? 'Tunai' : method} className="bg-slate-900 text-white">{method === 'Cash' ? 'Tunai' : method}</option>)}
                       </select>
                     </div>
+                    {errors.paymentMethod && <p className="text-rose-400 text-xs font-bold mt-1 px-1">{errors.paymentMethod.message}</p>}
                   </div>
                 </div>
 
                 {/* Connected Debt payment dropdown selection */}
-                {selectedType === 'expense' && selectedCategory === 'Pembayaran Hutang' && (
+                {selectedCategory === 'Pembayaran Hutang' && (
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-2 p-5 bg-slate-950/20 border border-emerald-500/25 rounded-2xl"
                   >
-                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] px-1">Hubungkan & Kurangi Sisa Hutang</label>
+                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] px-1">Hubungkan & Sesuaikan Sisa Hutang</label>
                     <div className="relative">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" />
                       <select
@@ -629,14 +560,14 @@ export default function TransactionsPage() {
                         required
                       >
                         <option value="" className="bg-slate-900 text-white">-- Pilih Akun Hutang --</option>
-                        {debts.filter(d => d.status === 'unpaid').map(debt => (
+                        {debts.filter(d => d.status === 'unpaid' || d.id === editingTransaction?.debtId).map(debt => (
                           <option key={debt.id} value={debt.id} className="bg-slate-900 text-white">
-                            {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: Rp{debt.amount.toLocaleString()})
+                             {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: Rp{debt.amount.toLocaleString()})
                           </option>
                         ))}
                       </select>
                     </div>
-                    {debts.filter(d => d.status === 'unpaid').length === 0 && (
+                    {debts.filter(d => d.status === 'unpaid' || d.id === editingTransaction?.debtId).length === 0 && (
                       <p className="text-rose-400 text-[10px] font-black uppercase tracking-wider mt-1 px-1">⚠️ Tidak ada akun hutang aktif yang belum lunas. Silakan buat akun hutang dulu di menu Hutang & Pinjaman.</p>
                     )}
                   </motion.div>
@@ -653,6 +584,7 @@ export default function TransactionsPage() {
                       placeholder="Ngopi bersama teman..."
                     />
                   </div>
+                  {errors.description && <p className="text-rose-400 text-xs font-bold mt-1 px-1">{errors.description.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -679,10 +611,10 @@ export default function TransactionsPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || isUploading}
+                  disabled={isSaving || isUploading}
                   className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 >
-                  {isSubmitting || isUploading ? 'Memproses...' : (editingTransaction ? 'Perbarui Transaksi' : 'Buat Transaksi')}
+                  {isSaving || isUploading ? 'Memproses...' : (editingTransaction ? 'Perbarui Transaksi' : 'Buat Transaksi')}
                 </button>
               </form>
             </motion.div>

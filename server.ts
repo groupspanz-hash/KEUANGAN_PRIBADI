@@ -9,17 +9,28 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
-// Gemini API setup for insights
-const genAI = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+let genAI: GoogleGenAI | null = null;
+
+function getGenAIClient() {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("Gemini API key not configured");
     }
+    genAI = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
   }
-});
+  return genAI;
+}
 
 app.post("/api/ai/scan-receipt", async (req, res) => {
   try {
@@ -73,7 +84,8 @@ app.post("/api/ai/scan-receipt", async (req, res) => {
       text: promptText
     };
 
-    const result = await genAI.models.generateContent({
+    const client = getGenAIClient();
+    const result = await client.models.generateContent({
       model: "gemini-3.5-flash",
       contents: [imagePart, textPart],
       config: {
@@ -82,9 +94,15 @@ app.post("/api/ai/scan-receipt", async (req, res) => {
     });
 
     const responseText = result.text;
-    res.json(JSON.parse(responseText));
+    res.json(JSON.parse(responseText || '{}'));
   } catch (error: any) {
     console.error("AI Scan Receipt Error:", error);
+    if (error.message === "Gemini API key not configured") {
+        return res.status(500).json({ error: "API Key Gemini belum dikonfigurasi. Silakan atur API key Anda." });
+    }
+    if (error.message && error.message.toLowerCase().includes("api key not valid")) {
+      return res.status(401).json({ error: "API Key Gemini tidak valid. Silakan periksa pengaturan API key Anda." });
+    }
     res.status(500).json({ error: "Gagal memindai struk/nota dengan AI" });
   }
 });
@@ -115,7 +133,8 @@ app.post("/api/ai/insights", async (req, res) => {
     `;
 
     const model = "gemini-3-flash-preview";
-    const result = await genAI.models.generateContent({
+    const client = getGenAIClient();
+    const result = await client.models.generateContent({
       model: model,
       contents: prompt,
       config: {
@@ -124,9 +143,15 @@ app.post("/api/ai/insights", async (req, res) => {
     });
 
     const responseText = result.text;
-    res.json(JSON.parse(responseText));
-  } catch (error) {
+    res.json(JSON.parse(responseText || '[]'));
+  } catch (error: any) {
     console.error("AI Insight Error:", error);
+    if (error.message === "Gemini API key not configured") {
+        return res.status(500).json({ error: "API Key Gemini belum dikonfigurasi. Silakan atur API key Anda." });
+    }
+    if (error.message && error.message.toLowerCase().includes("api key not valid")) {
+      return res.status(401).json({ error: "API Key Gemini tidak valid. Silakan periksa pengaturan API key Anda." });
+    }
     res.status(500).json({ error: "Failed to generate insights" });
   }
 });
