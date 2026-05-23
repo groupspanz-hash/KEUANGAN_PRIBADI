@@ -25,10 +25,11 @@ const navItems = [
 
 export default function Sidebar() {
   const location = useLocation();
-  const { user } = useStore();
+  const { user, clearData } = useStore();
 
   const handleLogout = async () => {
     try {
+      clearData();
       await signOut(auth);
     } catch (error) {
       console.error("Logout failed:", error);

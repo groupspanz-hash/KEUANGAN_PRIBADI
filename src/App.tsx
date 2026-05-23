@@ -74,7 +74,7 @@ export default function App() {
           };
           syncUser();
         } else {
-          setUser(null);
+          useStore.getState().clearData();
           setLoading(false);
         }
       } catch (error) {

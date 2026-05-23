@@ -23,11 +23,12 @@ import { cn } from '../firebase/utils';
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useStore();
+  const { user, clearData } = useStore();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
+      clearData();
       await signOut(auth);
       navigate('/login');
     } catch (error) {
