@@ -51,122 +51,40 @@ service cloud.firestore {
     // Transactions Collection
     // ---------------------------------------------------------
     match /transactions/{transactionId} {
-      function isValidTransaction(data) {
-        return data.userId == request.auth.uid &&
-          data.amount is number && data.amount > 0 &&
-          data.type in ['income', 'expense'] &&
-          data.category is string && data.category.size() <= 100 &&
-          data.paymentMethod is string && data.paymentMethod.size() <= 100 &&
-          data.description is string && data.description.size() <= 500 &&
-          data.date is timestamp;
-      }
-
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(transactionId) && resource.data.userId == request.auth.uid;
-      
-      allow create: if isSignedIn() && isValidId(transactionId) &&
-        isValidTransaction(incoming()) && 
-        incoming().keys().hasAll(['userId', 'amount', 'type', 'category', 'date', 'createdAt']) &&
-        incoming().createdAt == request.time;
-        
-      allow update: if isSignedIn() && isValidId(transactionId) &&
-        existing().userId == request.auth.uid &&
-        isValidTransaction(incoming()) &&
-        incoming().userId == existing().userId &&
-        incoming().createdAt == existing().createdAt &&
-        incoming().updatedAt == request.time &&
-        (
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'userId', 'amount', 'type', 'category', 'paymentMethod', 'description', 'date', 'receiptUrl', 'debtId', 'updatedAt'
-          ])
-        );
-        
-      allow delete: if isSignedIn() && isValidId(transactionId) && existing().userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     // ---------------------------------------------------------
     // Budgets Collection
     // ---------------------------------------------------------
     match /budgets/{budgetId} {
-      function isValidBudget(data) {
-        return data.userId == request.auth.uid &&
-          data.amount is number && data.amount >= 0 &&
-          data.category is string && data.category.size() <= 100 &&
-          data.month is string && data.month.matches('^\\d{4}-\\d{2}$');
-      }
-
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(budgetId) && resource.data.userId == request.auth.uid;
-      
-      allow create: if isSignedIn() && isValidId(budgetId) &&
-        isValidBudget(incoming()) && 
-        incoming().createdAt == request.time;
-        
-      allow update: if isSignedIn() && isValidId(budgetId) &&
-        existing().userId == request.auth.uid &&
-        isValidBudget(incoming()) &&
-        incoming().userId == existing().userId &&
-        incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['amount', 'category', 'month', 'updatedAt']);
-        
-      allow delete: if isSignedIn() && isValidId(budgetId) && existing().userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     // ---------------------------------------------------------
     // Goals Collection
     // ---------------------------------------------------------
     match /goals/{goalId} {
-      function isValidGoal(data) {
-        return data.userId == request.auth.uid &&
-          data.name is string && data.name.size() <= 200 &&
-          data.targetAmount is number && data.targetAmount > 0 &&
-          data.currentAmount is number && data.currentAmount >= 0;
-      }
-
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(goalId) && resource.data.userId == request.auth.uid;
-      
-      allow create: if isSignedIn() && isValidId(goalId) &&
-        isValidGoal(incoming()) && 
-        incoming().createdAt == request.time;
-        
-      allow update: if isSignedIn() && isValidId(goalId) &&
-        existing().userId == request.auth.uid &&
-        isValidGoal(incoming()) &&
-        incoming().userId == existing().userId &&
-        incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'targetAmount', 'currentAmount', 'deadline', 'updatedAt']);
-        
-      allow delete: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
 
     // ---------------------------------------------------------
     // Debts Collection
     // ---------------------------------------------------------
     match /debts/{debtId} {
-      function isValidDebt(data) {
-        return data.userId == request.auth.uid &&
-          data.name is string && data.name.size() <= 200 &&
-          data.amount is number && data.amount >= 0 &&
-          data.type in ['debt', 'loan'] &&
-          data.status in ['unpaid', 'paid'];
-      }
-
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && isValidId(debtId) && resource.data.userId == request.auth.uid;
-      
-      allow create: if isSignedIn() && isValidId(debtId) &&
-        isValidDebt(incoming()) && 
-        incoming().createdAt == request.time;
-        
-      allow update: if isSignedIn() && isValidId(debtId) &&
-        existing().userId == request.auth.uid &&
-        isValidDebt(incoming()) &&
-        incoming().userId == existing().userId &&
-        incoming().updatedAt == request.time &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['userId', 'name', 'amount', 'dueDate', 'type', 'status', 'updatedAt']);
-        
-      allow delete: if isSignedIn() && isValidId(debtId) && existing().userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
     }
   }
 }

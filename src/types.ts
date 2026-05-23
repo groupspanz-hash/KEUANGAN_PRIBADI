@@ -23,6 +23,8 @@ export interface Transaction {
   receiptUrl?: string;
   debtId?: string;
   createdAt: Timestamp | Date;
+  isRecurring?: boolean;
+  recurringInterval?: 'monthly' | 'weekly' | 'yearly';
 }
 
 export interface Budget {

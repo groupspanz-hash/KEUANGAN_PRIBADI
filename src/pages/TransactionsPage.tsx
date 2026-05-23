@@ -40,7 +40,8 @@ import {
   Upload,
   Sparkles,
   Camera,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
@@ -58,6 +59,8 @@ const transactionSchema = z.object({
   description: z.string().min(1, 'Deskripsi harus diisi'),
   date: z.string().min(1, 'Tanggal harus diisi'),
   debtId: z.string().optional(),
+  isRecurring: z.boolean().optional(),
+  recurringInterval: z.enum(['monthly', 'weekly', 'yearly']).optional(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -91,7 +94,9 @@ export default function TransactionsPage() {
       category: '',
       paymentMethod: '',
       description: '',
-      date: format(new Date(), 'yyyy-MM-dd')
+      date: format(new Date(), 'yyyy-MM-dd'),
+      isRecurring: false,
+      recurringInterval: 'monthly'
     }
   });
 
@@ -172,7 +177,7 @@ export default function TransactionsPage() {
       const parsedDate = new Date(data.date + 'T00:00:00');
       const finalDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
-      const txData = {
+      const txData: any = {
         userId: user.uid,
         amount: data.amount,
         type: data.type,
@@ -184,6 +189,14 @@ export default function TransactionsPage() {
         debtId: data.category === 'Pembayaran Hutang' ? (data.debtId || '') : '',
         updatedAt: serverTimestamp(),
       };
+      
+      if (data.isRecurring) {
+        txData.isRecurring = true;
+        txData.recurringInterval = data.recurringInterval;
+      } else {
+        txData.isRecurring = false;
+        txData.recurringInterval = null;
+      }
 
       // 1. Revert previous debt association if editing an existing transaction
       if (editingTransaction?.id && editingTransaction.category === 'Pembayaran Hutang' && editingTransaction.debtId) {
@@ -193,11 +206,11 @@ export default function TransactionsPage() {
           if (oldDebtSnap && oldDebtSnap.exists()) {
             const oldDebtData = oldDebtSnap.data();
             const revertedAmount = (oldDebtData.amount || 0) + editingTransaction.amount;
-            updateDoc(oldDebtRef, {
+            await updateDoc(oldDebtRef, {
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
               updatedAt: serverTimestamp()
-            }).catch(e => console.error("Revert old debt failed:", e));
+            });
           }
         } catch (e) {
           console.error("Failed to revert old debt payment:", e);
@@ -206,13 +219,13 @@ export default function TransactionsPage() {
 
       // 2. Save / Update Transaction
       if (editingTransaction?.id) {
-        updateDoc(doc(db, 'transactions', editingTransaction.id), txData).catch(e => console.error("Update tx failed:", e));
+        await updateDoc(doc(db, 'transactions', editingTransaction.id), txData);
         toast.success('Transaksi diperbarui');
       } else {
-        addDoc(collection(db, 'transactions'), {
+        await addDoc(collection(db, 'transactions'), {
           ...txData,
           createdAt: serverTimestamp(),
-        }).catch(e => console.error("Add tx failed:", e));
+        });
         toast.success('Transaksi ditambahkan');
       }
 
@@ -222,11 +235,11 @@ export default function TransactionsPage() {
         const debtToUpdate = debts.find((d: any) => d.id === data.debtId);
         if (debtToUpdate) {
           const newAmount = Math.max(0, (debtToUpdate.amount || 0) - data.amount);
-          updateDoc(debtRef, {
+          await updateDoc(debtRef, {
             amount: newAmount,
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
-          }).catch(e => console.error("Update debt failed:", e));
+          });
           toast.success(`Hutang berkurang sebesar Rp${data.amount.toLocaleString()}. Sisa: Rp${newAmount.toLocaleString()}`);
         }
       }
@@ -382,6 +395,12 @@ export default function TransactionsPage() {
                 <div className="flex-1 min-w-0 text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
                     <h3 className="text-xl font-bold truncate text-white">{tx.description}</h3>
+                    {tx.isRecurring && (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-widest bg-blue-500/10 px-2 py-1 rounded-md text-blue-400 mx-auto md:mx-0">
+                        <RefreshCw className="w-3 h-3" />
+                        Berulang
+                      </span>
+                    )}
                     {tx.receiptUrl && (
                       <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-widest bg-emerald-500/10 px-2 py-1 rounded-md text-emerald-400 hover:bg-emerald-500/20 transition-colors mx-auto md:mx-0">
                         <ImageIcon className="w-3 h-3" />
@@ -572,6 +591,35 @@ export default function TransactionsPage() {
                     )}
                   </motion.div>
                 )}
+
+                <div className="space-y-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      {...register('isRecurring')}
+                      className="w-5 h-5 rounded border-slate-700 bg-slate-800 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                    />
+                    <span className="text-sm font-bold text-white">Transaksi Berulang (Otomatis)</span>
+                  </label>
+                  
+                  {watch('isRecurring') && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="pt-2 border-t border-slate-800"
+                    >
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1 block mb-2">Interval Pengulangan</label>
+                      <select
+                        {...register('recurringInterval')}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white text-sm"
+                      >
+                        <option value="weekly">Mingguan</option>
+                        <option value="monthly">Bulanan</option>
+                        <option value="yearly">Tahunan</option>
+                      </select>
+                    </motion.div>
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Deskripsi</label>
