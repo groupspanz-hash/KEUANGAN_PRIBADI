@@ -130,8 +130,7 @@ export default function TransactionsPage() {
 
     const q = query(
       collection(db, 'transactions'),
-      where('userId', '==', user.uid),
-      orderBy('date', 'desc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -139,6 +138,14 @@ export default function TransactionsPage() {
         id: doc.id,
         ...doc.data()
       })) as Transaction[];
+      
+      // Sort manually to avoid needing a Firestore composite index
+      txs.sort((a: any, b: any) => {
+        const dateA = a.date && typeof a.date.toMillis === 'function' ? a.date.toMillis() : (new Date(a.date as any).getTime() || 0);
+        const dateB = b.date && typeof b.date.toMillis === 'function' ? b.date.toMillis() : (new Date(b.date as any).getTime() || 0);
+        return dateB - dateA;
+      });
+      
       setTransactions(txs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'transactions', false);
