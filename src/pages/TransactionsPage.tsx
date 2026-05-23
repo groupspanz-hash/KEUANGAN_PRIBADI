@@ -280,11 +280,11 @@ export default function TransactionsPage() {
             if (debtSnap && debtSnap.exists()) {
               const debtData = debtSnap.data();
               const revertedAmount = (debtData.amount || 0) + tx.amount;
-              updateDoc(debtRef, {
+              await updateDoc(debtRef, {
                 amount: revertedAmount,
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
-              }).catch(e => console.error("Restore debt failed:", e));
+              });
               toast.success(`Saldo Hutang dikembalikan sebesar Rp${tx.amount.toLocaleString()}`);
             }
           } catch (e) {
@@ -292,7 +292,7 @@ export default function TransactionsPage() {
           }
         }
 
-        deleteDoc(doc(db, 'transactions', tx.id)).catch(e => console.error("Delete tx failed:", e));
+        await deleteDoc(doc(db, 'transactions', tx.id));
         toast.success('Transaksi dihapus');
       } catch (error) {
         toast.error('Hapus gagal');

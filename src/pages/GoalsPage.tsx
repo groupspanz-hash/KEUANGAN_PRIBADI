@@ -68,10 +68,10 @@ export default function GoalsPage() {
       };
 
       if (editingGoal?.id) {
-        updateDoc(doc(db, 'goals', editingGoal.id), goalData).catch(e => console.error("Update goal failed:", e));
+        await updateDoc(doc(db, 'goals', editingGoal.id), goalData);
         toast.success('Target diperbarui');
       } else {
-        addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() }).catch(e => console.error("Add goal failed:", e));
+        await addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() });
         toast.success('Target ditambahkan');
       }
       setIsModalOpen(false);
@@ -140,9 +140,9 @@ export default function GoalsPage() {
                     <Pencil className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
                   </button>
                   <button 
-                    onClick={() => { 
+                    onClick={async () => { 
                       if(goal.id) { 
-                        deleteDoc(doc(db, 'goals', goal.id)).catch(e => console.error(e)); 
+                        await deleteDoc(doc(db, 'goals', goal.id));
                         toast.success('Target dihapus'); 
                       } 
                     }}

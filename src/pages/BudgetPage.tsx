@@ -70,10 +70,10 @@ export default function BudgetPage() {
       };
 
       if (editingBudget?.id) {
-        updateDoc(doc(db, 'budgets', editingBudget.id), budgetData).catch(e => console.error("Update budget failed:", e));
+        await updateDoc(doc(db, 'budgets', editingBudget.id), budgetData);
         toast.success('Anggaran diperbarui');
       } else {
-        addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() }).catch(e => console.error("Add budget failed:", e));
+        await addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
         toast.success('Anggaran ditetapkan');
       }
       setIsModalOpen(false);
@@ -148,8 +148,8 @@ export default function BudgetPage() {
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button 
-                    onClick={() => { 
-                      deleteDoc(doc(db, 'budgets', budget.id)).catch(e => console.error(e)); 
+                    onClick={async () => { 
+                      await deleteDoc(doc(db, 'budgets', budget.id));
                       toast.success('Anggaran dihapus'); 
                     }}
                     title="Hapus Anggaran"
