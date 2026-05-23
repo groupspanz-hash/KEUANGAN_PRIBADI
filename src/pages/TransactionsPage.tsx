@@ -465,9 +465,10 @@ export default function TransactionsPage() {
               className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
               className="relative w-full max-w-2xl bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/30">

@@ -186,9 +186,10 @@ export default function DebtsPage() {
               className="absolute inset-0 bg-black/80 backdrop-blur-md" 
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
+              initial={{ opacity: 0, scale: 0.9 }} 
               animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.95 }} 
+              exit={{ opacity: 0, scale: 0.9 }} 
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
               className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-4 flex items-center justify-between">
