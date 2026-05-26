@@ -66,7 +66,7 @@ export default function DashboardPage() {
         return dateB - dateA;
       });
       
-      setTransactions(txs.slice(0, 50));
+      setTransactions(txs);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'transactions', false);
     });
