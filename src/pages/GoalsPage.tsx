@@ -54,6 +54,7 @@ export default function GoalsPage() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsModalOpen(false); // Optimistic UI: close immediately
     setIsSaving(true);
     
     try {
@@ -67,15 +68,15 @@ export default function GoalsPage() {
         updatedAt: serverTimestamp(),
       };
 
-      if (editingGoal?.id) {
-        await withTimeout(updateDoc(doc(db, 'goals', editingGoal.id), goalData));
-        toast.success('Target diperbarui');
-      } else {
-        await withTimeout(addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() }));
-        toast.success('Target ditambahkan');
-      }
-      setIsModalOpen(false);
+      const isEditing = !!editingGoal?.id;
+      const goalPromise = isEditing
+        ? updateDoc(doc(db, 'goals', editingGoal!.id), goalData)
+        : addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() });
+        
       setEditingGoal(null);
+
+      await withTimeout(goalPromise);
+      toast.success(isEditing ? 'Target diperbarui' : 'Target ditambahkan');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'goals');
     } finally {

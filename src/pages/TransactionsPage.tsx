@@ -164,15 +164,24 @@ export default function TransactionsPage() {
       return;
     }
 
+    const currentEditingTx = editingTransaction;
+    const currentReceiptFile = receiptFile;
+    
+    if (!currentReceiptFile) {
+      handleCloseModal(); // Optimistic UI: close immediately and reset form if no upload
+    } else {
+      // If there's an image, keep modal open to show uploading state, to prevent background navigation issues
+    }
+
     setIsSaving(true);
     try {
-      let receiptUrl = editingTransaction?.receiptUrl || '';
+      let receiptUrl = currentEditingTx?.receiptUrl || '';
       
-      if (receiptFile) {
+      if (currentReceiptFile) {
         setIsUploading(true);
         try {
-          const fileRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${receiptFile.name}`);
-          const snapshot = await withTimeout(uploadBytes(fileRef, receiptFile), 15000, 'Gagal mengunggah gambar. Waktu terlampaui.');
+          const fileRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${currentReceiptFile.name}`);
+          const snapshot = await withTimeout(uploadBytes(fileRef, currentReceiptFile), 15000, 'Gagal mengunggah gambar. Waktu terlampaui.');
           receiptUrl = await getDownloadURL(snapshot.ref);
         } catch (error) {
           throw new Error('Gagal mengunggah kwitansi');
@@ -206,13 +215,13 @@ export default function TransactionsPage() {
       }
 
       // 1. Revert previous debt association if editing an existing transaction
-      if (editingTransaction?.id && editingTransaction.category === 'Pembayaran Hutang' && editingTransaction.debtId) {
+      if (currentEditingTx?.id && currentEditingTx.category === 'Pembayaran Hutang' && currentEditingTx.debtId) {
         try {
-          const oldDebtRef = doc(db, 'debts', editingTransaction.debtId);
+          const oldDebtRef = doc(db, 'debts', currentEditingTx.debtId);
           const oldDebtSnap = await getDocFromCache(oldDebtRef).catch(() => null);
           if (oldDebtSnap && oldDebtSnap.exists()) {
             const oldDebtData = oldDebtSnap.data();
-            const revertedAmount = (oldDebtData.amount || 0) + editingTransaction.amount;
+            const revertedAmount = (oldDebtData.amount || 0) + currentEditingTx.amount;
             await withTimeout(updateDoc(oldDebtRef, {
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
@@ -225,8 +234,8 @@ export default function TransactionsPage() {
       }
 
       // 2. Save / Update Transaction
-      if (editingTransaction?.id) {
-        await withTimeout(updateDoc(doc(db, 'transactions', editingTransaction.id), txData));
+      if (currentEditingTx?.id) {
+        await withTimeout(updateDoc(doc(db, 'transactions', currentEditingTx.id), txData));
         toast.success('Transaksi diperbarui');
       } else {
         await withTimeout(addDoc(collection(db, 'transactions'), {
@@ -251,7 +260,9 @@ export default function TransactionsPage() {
         }
       }
 
-      handleCloseModal();
+      if (currentReceiptFile) {
+        handleCloseModal(); // If it was kept open for upload, close it now
+      }
     } catch (error: any) {
       console.error("Submit transaction error:", error);
       toast.error('Gagal menyimpan transaksi: ' + (error?.message || error));

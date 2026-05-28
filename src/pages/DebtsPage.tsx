@@ -51,6 +51,7 @@ export default function DebtsPage() {
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user) return;
+    setIsModalOpen(false); // Optimistic UI: close immediately
     setIsSaving(true);
     
     try {
@@ -68,15 +69,15 @@ export default function DebtsPage() {
         updatedAt: serverTimestamp(),
       };
 
-      if (editingDebt?.id) {
-        await withTimeout(updateDoc(doc(db, 'debts', editingDebt.id), debtData));
-        toast.success('Informasi diperbarui');
-      } else {
-        await withTimeout(addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() }));
-        toast.success('Hutang/Pinjaman dicatat');
-      }
-      setIsModalOpen(false);
-      setEditingDebt(null);
+      const isEditing = !!editingDebt?.id;
+      const debtPromise = isEditing
+        ? updateDoc(doc(db, 'debts', editingDebt!.id), debtData)
+        : addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() });
+        
+      setEditingDebt(null); // Clear state
+
+      await withTimeout(debtPromise);
+      toast.success(isEditing ? 'Informasi diperbarui' : 'Hutang/Pinjaman dicatat');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'debts', false);
       toast.error('Gagal menyimpan catatan hutang/pinjaman. Silakan coba lagi.');

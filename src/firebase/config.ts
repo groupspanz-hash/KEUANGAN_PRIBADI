@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -12,7 +12,9 @@ const dbId = (firebaseConfig as any).firestoreDatabaseId && (firebaseConfig as a
   ? (firebaseConfig as any).firestoreDatabaseId
   : undefined;
 
-export const db = getFirestore(app, dbId);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, dbId);
 
 export const storage = getStorage(app);
 

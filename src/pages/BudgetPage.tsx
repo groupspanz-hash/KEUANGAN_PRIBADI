@@ -57,6 +57,7 @@ export default function BudgetPage() {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsModalOpen(false); // Optimistic UI: close immediately
     setIsSaving(true);
     
     try {
@@ -69,15 +70,15 @@ export default function BudgetPage() {
         updatedAt: serverTimestamp(),
       };
 
-      if (editingBudget?.id) {
-        await withTimeout(updateDoc(doc(db, 'budgets', editingBudget.id), budgetData));
-        toast.success('Anggaran diperbarui');
-      } else {
-        await withTimeout(addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() }));
-        toast.success('Anggaran ditetapkan');
-      }
-      setIsModalOpen(false);
-      setEditingBudget(null);
+      const isEditing = !!editingBudget?.id;
+      const budgetPromise = isEditing
+        ? updateDoc(doc(db, 'budgets', editingBudget!.id), budgetData)
+        : addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
+
+      setEditingBudget(null); // Clear state
+
+      await withTimeout(budgetPromise);
+      toast.success(isEditing ? 'Anggaran diperbarui' : 'Anggaran ditetapkan');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'budgets');
     } finally {
