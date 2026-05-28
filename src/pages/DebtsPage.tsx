@@ -69,10 +69,10 @@ export default function DebtsPage() {
       };
 
       if (editingDebt?.id) {
-        await updateDoc(doc(db, 'debts', editingDebt.id), debtData);
+        await withTimeout(updateDoc(doc(db, 'debts', editingDebt.id), debtData));
         toast.success('Informasi diperbarui');
       } else {
-        await addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() });
+        await withTimeout(addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() }));
         toast.success('Hutang/Pinjaman dicatat');
       }
       setIsModalOpen(false);
@@ -89,10 +89,10 @@ export default function DebtsPage() {
     if (!debt.id) return;
     const newStatus = debt.status === 'paid' ? 'unpaid' : 'paid';
     try {
-      await updateDoc(doc(db, 'debts', debt.id), { 
+      await withTimeout(updateDoc(doc(db, 'debts', debt.id), { 
         status: newStatus,
         updatedAt: serverTimestamp()
-      });
+      }));
       toast.success(`Ditandai sebagai ${newStatus === 'paid' ? 'sudah dibayar' : 'belum dibayar'}`);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'debts');
@@ -165,7 +165,7 @@ export default function DebtsPage() {
                 Ubah
               </button>
               <button 
-                onClick={async () => { if(debt.id) { await deleteDoc(doc(db, 'debts', debt.id)); toast.success('Dihapus'); } }}
+                onClick={async () => { if(debt.id) { try { await withTimeout(deleteDoc(doc(db, 'debts', debt.id))); toast.success('Dihapus'); } catch(error) { handleFirestoreError(error, OperationType.DELETE, 'debts'); } } }}
                 className="px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition-colors"
               >
                 <X className="w-4 h-4" />

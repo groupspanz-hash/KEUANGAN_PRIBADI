@@ -68,10 +68,10 @@ export default function GoalsPage() {
       };
 
       if (editingGoal?.id) {
-        await updateDoc(doc(db, 'goals', editingGoal.id), goalData);
+        await withTimeout(updateDoc(doc(db, 'goals', editingGoal.id), goalData));
         toast.success('Target diperbarui');
       } else {
-        await addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() });
+        await withTimeout(addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() }));
         toast.success('Target ditambahkan');
       }
       setIsModalOpen(false);
@@ -142,8 +142,12 @@ export default function GoalsPage() {
                   <button 
                     onClick={async () => { 
                       if(goal.id) { 
-                        await deleteDoc(doc(db, 'goals', goal.id));
-                        toast.success('Target dihapus'); 
+                        try {
+                          await withTimeout(deleteDoc(doc(db, 'goals', goal.id)));
+                          toast.success('Target dihapus'); 
+                        } catch (error) {
+                          handleFirestoreError(error, OperationType.DELETE, 'goals');
+                        }
                       } 
                     }}
                     title="Hapus Target"

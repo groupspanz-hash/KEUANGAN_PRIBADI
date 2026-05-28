@@ -213,11 +213,11 @@ export default function TransactionsPage() {
           if (oldDebtSnap && oldDebtSnap.exists()) {
             const oldDebtData = oldDebtSnap.data();
             const revertedAmount = (oldDebtData.amount || 0) + editingTransaction.amount;
-            await updateDoc(oldDebtRef, {
+            await withTimeout(updateDoc(oldDebtRef, {
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
               updatedAt: serverTimestamp()
-            });
+            }));
           }
         } catch (e) {
           console.error("Failed to revert old debt payment:", e);
@@ -226,13 +226,13 @@ export default function TransactionsPage() {
 
       // 2. Save / Update Transaction
       if (editingTransaction?.id) {
-        await updateDoc(doc(db, 'transactions', editingTransaction.id), txData);
+        await withTimeout(updateDoc(doc(db, 'transactions', editingTransaction.id), txData));
         toast.success('Transaksi diperbarui');
       } else {
-        await addDoc(collection(db, 'transactions'), {
+        await withTimeout(addDoc(collection(db, 'transactions'), {
           ...txData,
           createdAt: serverTimestamp(),
-        });
+        }));
         toast.success('Transaksi ditambahkan');
       }
 
@@ -242,11 +242,11 @@ export default function TransactionsPage() {
         const debtToUpdate = debts.find((d: any) => d.id === data.debtId);
         if (debtToUpdate) {
           const newAmount = Math.max(0, (debtToUpdate.amount || 0) - data.amount);
-          await updateDoc(debtRef, {
+          await withTimeout(updateDoc(debtRef, {
             amount: newAmount,
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
-          });
+          }));
           toast.success(`Hutang berkurang sebesar Rp${data.amount.toLocaleString()}. Sisa: Rp${newAmount.toLocaleString()}`);
         }
       }
@@ -287,11 +287,11 @@ export default function TransactionsPage() {
             if (debtSnap && debtSnap.exists()) {
               const debtData = debtSnap.data();
               const revertedAmount = (debtData.amount || 0) + tx.amount;
-              await updateDoc(debtRef, {
+              await withTimeout(updateDoc(debtRef, {
                 amount: revertedAmount,
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
-              });
+              }));
               toast.success(`Saldo Hutang dikembalikan sebesar Rp${tx.amount.toLocaleString()}`);
             }
           } catch (e) {
@@ -299,7 +299,7 @@ export default function TransactionsPage() {
           }
         }
 
-        await deleteDoc(doc(db, 'transactions', tx.id));
+        await withTimeout(deleteDoc(doc(db, 'transactions', tx.id)));
         toast.success('Transaksi dihapus');
       } catch (error) {
         toast.error('Hapus gagal');

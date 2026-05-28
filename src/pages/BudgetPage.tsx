@@ -70,10 +70,10 @@ export default function BudgetPage() {
       };
 
       if (editingBudget?.id) {
-        await updateDoc(doc(db, 'budgets', editingBudget.id), budgetData);
+        await withTimeout(updateDoc(doc(db, 'budgets', editingBudget.id), budgetData));
         toast.success('Anggaran diperbarui');
       } else {
-        await addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
+        await withTimeout(addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() }));
         toast.success('Anggaran ditetapkan');
       }
       setIsModalOpen(false);
@@ -148,9 +148,13 @@ export default function BudgetPage() {
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button 
-                    onClick={async () => { 
-                      await deleteDoc(doc(db, 'budgets', budget.id));
-                      toast.success('Anggaran dihapus'); 
+                    onClick={async () => {
+                      try {
+                        await withTimeout(deleteDoc(doc(db, 'budgets', budget.id)));
+                        toast.success('Anggaran dihapus');
+                      } catch (error) {
+                        handleFirestoreError(error, OperationType.DELETE, 'budgets');
+                      }
                     }}
                     title="Hapus Anggaran"
                     className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 hover:text-rose-400 transition-colors"
