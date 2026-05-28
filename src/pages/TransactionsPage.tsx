@@ -222,11 +222,11 @@ export default function TransactionsPage() {
           if (oldDebtSnap && oldDebtSnap.exists()) {
             const oldDebtData = oldDebtSnap.data();
             const revertedAmount = (oldDebtData.amount || 0) + currentEditingTx.amount;
-            await withTimeout(updateDoc(oldDebtRef, {
+            updateDoc(oldDebtRef, {
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
               updatedAt: serverTimestamp()
-            }));
+            }).catch(console.error);
           }
         } catch (e) {
           console.error("Failed to revert old debt payment:", e);
@@ -235,13 +235,15 @@ export default function TransactionsPage() {
 
       // 2. Save / Update Transaction
       if (currentEditingTx?.id) {
-        await withTimeout(updateDoc(doc(db, 'transactions', currentEditingTx.id), txData));
+        updateDoc(doc(db, 'transactions', currentEditingTx.id), txData).catch(e => {
+          console.error('Update failed', e);
+        });
         toast.success('Transaksi diperbarui');
       } else {
-        await withTimeout(addDoc(collection(db, 'transactions'), {
+        addDoc(collection(db, 'transactions'), {
           ...txData,
           createdAt: serverTimestamp(),
-        }));
+        }).catch(e => console.error('Add failed', e));
         toast.success('Transaksi ditambahkan');
       }
 
@@ -251,22 +253,22 @@ export default function TransactionsPage() {
         const debtToUpdate = debts.find((d: any) => d.id === data.debtId);
         if (debtToUpdate) {
           const newAmount = Math.max(0, (debtToUpdate.amount || 0) - data.amount);
-          await withTimeout(updateDoc(debtRef, {
+          updateDoc(debtRef, {
             amount: newAmount,
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
-          }));
+          }).catch(console.error);
           toast.success(`Hutang berkurang sebesar Rp${data.amount.toLocaleString()}. Sisa: Rp${newAmount.toLocaleString()}`);
         }
       }
 
+      setIsSaving(false);
       if (currentReceiptFile) {
         handleCloseModal(); // If it was kept open for upload, close it now
       }
     } catch (error: any) {
       console.error("Submit transaction error:", error);
       toast.error('Gagal menyimpan transaksi: ' + (error?.message || error));
-    } finally {
       setIsSaving(false);
     }
   };

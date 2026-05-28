@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, enableIndexedDbPersistence, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -15,6 +15,14 @@ const dbId = (firebaseConfig as any).firestoreDatabaseId && (firebaseConfig as a
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, dbId);
+
+enableMultiTabIndexedDbPersistence(db).catch((err) => {
+  if (err.code == 'failed-precondition') {
+    enableIndexedDbPersistence(db).catch(console.error);
+  } else if (err.code == 'unimplemented') {
+    console.warn("Offline persistence not supported by browser");
+  }
+});
 
 export const storage = getStorage(app);
 

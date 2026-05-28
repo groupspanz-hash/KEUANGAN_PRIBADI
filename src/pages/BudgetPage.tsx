@@ -41,11 +41,7 @@ export default function BudgetPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'budgets'),
-      where('userId', '==', user.uid),
-      where('month', '==', selectedMonth)
-    );
+    const q = query(collection(db, 'budgets'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const bSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Budget[];
       setBudgets(bSet);
@@ -121,7 +117,7 @@ export default function BudgetPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {budgets.map((budget) => {
+        {budgets.filter(b => b.month === selectedMonth).map((budget) => {
           const spent = calculateSpending(budget.category);
           const percent = Math.min((spent / budget.amount) * 100, 100);
           const isOver = spent > budget.amount;
@@ -204,7 +200,7 @@ export default function BudgetPage() {
             </motion.div>
           );
         })}
-        {budgets.length === 0 && (
+        {budgets.filter(b => b.month === selectedMonth).length === 0 && (
           <div className="md:col-span-2 xl:col-span-3 py-32 flex flex-col items-center justify-center text-center opacity-30 select-none">
             <PieChart className="w-20 h-20 mb-6" />
             <h3 className="text-2xl font-bold">Belum ada anggaran untuk bulan ini</h3>
