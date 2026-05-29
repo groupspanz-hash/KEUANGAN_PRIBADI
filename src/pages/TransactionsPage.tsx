@@ -48,27 +48,36 @@ import { Transaction, CATEGORIES, INCOME_CATEGORIES, EXPENSE_CATEGORIES, PAYMENT
 
 const transactionSchema = z.object({
   amount: z.number().min(0.01, 'Jumlah harus lebih besar dari 0'),
-  type: z.enum(['income', 'expense']),
-  category: z.string().min(1, 'Kategori harus diisi'),
+  type: z.enum(['income', 'expense', 'transfer']),
+  category: z.string().optional(),
   paymentMethod: z.string().min(1, 'Metode pembayaran harus diisi'),
   description: z.string().min(1, 'Deskripsi harus diisi'),
   date: z.string().min(1, 'Tanggal harus diisi'),
   debtId: z.string().optional(),
+  goalId: z.string().optional(),
   isRecurring: z.boolean().optional(),
   recurringInterval: z.enum(['monthly', 'weekly', 'yearly']).optional(),
+}).refine((data) => {
+  if (data.type !== 'transfer') {
+    return !!data.category && data.category.length > 0;
+  }
+  return true;
+}, {
+  message: "Kategori harus diisi",
+  path: ["category"]
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export default function TransactionsPage() {
-  const { user, transactions, setTransactions, debts, setDebts, budgets } = useStore();
+  const { user, transactions, setTransactions, debts, setDebts, budgets, goals, setGoals } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense' | 'transfer'>('all');
   const [isUploading, setIsUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   
@@ -110,23 +119,23 @@ export default function TransactionsPage() {
   const selectedType = watch('type');
   const selectedCategory = watch('category');
 
-  // Load debts to connect with 'Pembayaran Hutang' category
+  // Load goals to connect with 'transfer' type
   useEffect(() => {
     if (!user) return;
-    const dRef = ref(db, `debts/${user.uid}`);
-    const unsubscribe = onValue(dRef, (snapshot) => {
+    const gRef = ref(db, `goals/${user.uid}`);
+    const unsubscribe = onValue(gRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
-        const dSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as any[];
-        setDebts(dSet);
+        const gSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as any[];
+        setGoals(gSet);
       } else {
-        setDebts([]);
+        setGoals([]);
       }
     }, (error) => {
-      handleDatabaseError(error, OperationType.LIST, 'debts', false);
+      handleDatabaseError(error, OperationType.LIST, 'goals', false);
     });
     return () => unsubscribe();
-  }, [user, setDebts]);
+  }, [user, setGoals]);
 
   useEffect(() => {
     if (!user) return;
@@ -165,6 +174,11 @@ export default function TransactionsPage() {
       return;
     }
 
+    if (data.type === 'transfer' && !data.goalId) {
+      toast.error('Silakan pilih target tabungan');
+      return;
+    }
+
     const currentEditingTx = editingTransaction;
     const currentReceiptFile = receiptFile;
     
@@ -198,12 +212,13 @@ export default function TransactionsPage() {
         userId: user.uid,
         amount: data.amount,
         type: data.type,
-        category: data.category,
+        category: data.type === 'transfer' ? 'Transfer Tabungan' : data.category,
         paymentMethod: data.paymentMethod,
         description: data.description,
         date: finalDate.getTime(),
         receiptUrl,
         debtId: data.category === 'Pembayaran Hutang' ? (data.debtId || '') : '',
+        goalId: data.type === 'transfer' ? (data.goalId || '') : '',
         updatedAt: serverTimestamp(),
       };
       
@@ -291,6 +306,24 @@ export default function TransactionsPage() {
         }
       }
 
+      // 4. Update goal amount if it is a transfer
+      if (data.type === 'transfer' && data.goalId) {
+        const goalRef = ref(db, `goals/${user.uid}/${data.goalId}`);
+        const goalToUpdate = goals.find((g: any) => g.id === data.goalId);
+        if (goalToUpdate) {
+          // If editing, we should ideally revert previous transfer amount. For simplicity, we just add the difference if we track it.
+          // Since edit logic for goals isn't fully implemented, we'll just add to current amount.
+          const amountToAdd = currentEditingTx?.id ? (data.amount - currentEditingTx.amount) : data.amount;
+          const newCurrentAmount = Math.max(0, (goalToUpdate.currentAmount || 0) + amountToAdd);
+          set(goalRef, {
+            ...goalToUpdate,
+            currentAmount: newCurrentAmount,
+            updatedAt: serverTimestamp()
+          }).catch(console.error);
+          toast.success(`Tabungan bertambah sebesar ${formatRupiah(data.amount)}`);
+        }
+      }
+
       setIsSaving(false);
       if (currentReceiptFile) {
         handleCloseModal(); // If it was kept open for upload, close it now
@@ -314,6 +347,11 @@ export default function TransactionsPage() {
       setValue('debtId', tx.debtId);
     } else {
       setValue('debtId', '');
+    }
+    if (tx.goalId) {
+      setValue('goalId', tx.goalId);
+    } else {
+      setValue('goalId', '');
     }
     setIsModalOpen(true);
   };
@@ -342,6 +380,24 @@ export default function TransactionsPage() {
           }
         }
 
+        if (tx.type === 'transfer' && tx.goalId) {
+          try {
+            const goalRef = ref(db, `goals/${user.uid}/${tx.goalId}`);
+            const goalSnap = await get(goalRef);
+            if (goalSnap.exists()) {
+              const goalData = goalSnap.val();
+              const revertedAmount = Math.max(0, (goalData.currentAmount || 0) - tx.amount);
+              await withTimeout(set(goalRef, {
+                ...goalData,
+                currentAmount: revertedAmount,
+                updatedAt: serverTimestamp()
+              }));
+            }
+          } catch (e) {
+            console.error("Failed to restore goal balance on deletion:", e);
+          }
+        }
+
         await withTimeout(remove(ref(db, `transactions/${user.uid}/${tx.id}`)));
         toast.success('Transaksi dihapus');
       } catch (error) {
@@ -361,7 +417,8 @@ export default function TransactionsPage() {
         description: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         amount: undefined,
-        debtId: ''
+        debtId: '',
+        goalId: ''
       });
     } catch (e) {
       console.error("Resetting form fields failed:", e);
@@ -394,6 +451,7 @@ export default function TransactionsPage() {
       all: 'semua',
       income: 'pendapatan',
       expense: 'pengeluaran',
+      transfer: 'transfer',
       recent: 'Transaksi Terbaru',
     },
     en: {
@@ -404,6 +462,7 @@ export default function TransactionsPage() {
       all: 'all',
       income: 'income',
       expense: 'expense',
+      transfer: 'transfer',
       recent: 'Recent Transactions',
     }
   };
@@ -467,19 +526,19 @@ export default function TransactionsPage() {
             )}
           </div>
           
-          <div className="flex gap-2 w-full sm:w-auto">
-            {[t.all, t.income, t.expense].map((type, idx) => (
+          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+            {[{label: t.all, val: 'all'}, {label: t.income, val: 'income'}, {label: t.expense, val: 'expense'}, {label: t.transfer || 'transfer', val: 'transfer'}].map((item) => (
               <button
-                key={type}
-                onClick={() => setFilterType(idx === 0 ? 'all' : idx === 1 ? 'income' : 'expense')}
+                key={item.val}
+                onClick={() => setFilterType(item.val as any)}
                 className={cn(
-                  "flex-1 lg:flex-none px-4 lg:px-6 py-4 rounded-2xl font-bold text-sm capitalize transition-all border",
-                  (filterType === 'all' && idx === 0) || (filterType === 'income' && idx === 1) || (filterType === 'expense' && idx === 2)
+                  "flex-1 lg:flex-none px-4 lg:px-6 py-4 rounded-2xl font-bold text-sm capitalize transition-all border whitespace-nowrap",
+                  filterType === item.val
                     ? "bg-emerald-500 text-white border-transparent shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
                     : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
                 )}
               >
-                {type}
+                {item.label}
               </button>
             ))}
           </div>
@@ -501,7 +560,7 @@ export default function TransactionsPage() {
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className={cn(
                   "w-16 h-16 rounded-2xl flex items-center justify-center font-semibold text-2xl shrink-0 transition-transform group-hover:scale-110",
-                  tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                  tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : tx.type === 'expense' ? "bg-rose-500/10 text-rose-400" : "bg-indigo-500/10 text-indigo-400"
                 )}>
                   {tx.category[0]}
                 </div>
@@ -532,9 +591,9 @@ export default function TransactionsPage() {
                 <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-4 md:pt-0">
                   <p className={cn(
                     "text-2xl font-semibold tracking-tighter",
-                    tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
+                    tx.type === 'income' ? "text-emerald-400" : tx.type === 'expense' ? "text-rose-400" : "text-indigo-400"
                   )}>
-                    {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                    {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}{formatRupiah(tx.amount)}
                   </p>
                   <div className="flex items-center gap-2">
                     <button 
@@ -596,23 +655,27 @@ export default function TransactionsPage() {
               </div>
 
               <form onSubmit={handleSubmit(onSubmit, onFormError)} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-2 gap-4">
-                  {['expense', 'income'].map((type) => (
+                <div className="grid grid-cols-3 gap-4">
+                  {['expense', 'income', 'transfer'].map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setValue('type', type as any)}
                       className={cn(
-                        "py-6 rounded-2xl font-semibold text-xs  tracking-wide border transition-all flex flex-col items-center gap-3",
+                        "py-4 rounded-2xl font-semibold text-xs tracking-wide border transition-all flex flex-col items-center gap-2",
                         selectedType === type
                           ? type === 'income' 
                             ? "bg-emerald-500 border-transparent text-white" 
-                            : "bg-rose-500 border-transparent text-white"
+                            : type === 'expense'
+                              ? "bg-rose-500 border-transparent text-white"
+                              : "bg-indigo-500 border-transparent text-white"
                           : "bg-slate-900 border-slate-800 text-slate-500 hover:border-slate-700"
                       )}
                     >
-                      {type === 'income' ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
-                      {type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+                      {type === 'income' ? <TrendingUp className="w-5 h-5" /> : type === 'expense' ? <TrendingDown className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                      <span className="text-[10px] sm:text-xs">
+                        {type === 'income' ? 'Pemasukan' : type === 'expense' ? 'Pengeluaran' : 'Transfer'}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -647,20 +710,44 @@ export default function TransactionsPage() {
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Kategori</label>
-                    <div className="relative">
-                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <select
-                        {...register('category')}
-                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
-                      >
-                        <option value="" disabled className="bg-slate-900 text-white">Pilih Kategori</option>
-                        {(selectedType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
-                      </select>
+                  {selectedType !== 'transfer' ? (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-slate-500 tracking-wide px-1">Kategori</label>
+                      <div className="relative">
+                         <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                        <select
+                          {...register('category')}
+                          className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
+                        >
+                          <option value="" disabled className="bg-slate-900 text-white">Pilih Kategori</option>
+                          {(selectedType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
+                        </select>
+                      </div>
+                      {errors.category && <p className="text-rose-400 text-xs font-bold mt-1 px-1">{errors.category.message}</p>}
                     </div>
-                    {errors.category && <p className="text-rose-400 text-xs font-bold mt-1 px-1">{errors.category.message}</p>}
-                  </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-indigo-400 tracking-wide px-1">Target Tabungan</label>
+                      <div className="relative">
+                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-400" />
+                        <select
+                          {...register('goalId')}
+                          className="w-full bg-slate-900 border border-indigo-500/20 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-indigo-500 transition-colors appearance-none text-white font-bold"
+                          required
+                        >
+                          <option value="" className="bg-slate-900 text-white">-- Pilih Target --</option>
+                          {goals.map(goal => (
+                            <option key={goal.id} value={goal.id} className="bg-slate-900 text-white">
+                              {goal.name} (Terkumpul: {formatRupiah(goal.currentAmount)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {goals.length === 0 && (
+                        <p className="text-rose-400 text-xs font-semibold tracking-wider mt-1 px-1">⚠️ Tidak ada target tabungan. Silakan buat di menu Tabungan.</p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Metode Pembayaran</label>

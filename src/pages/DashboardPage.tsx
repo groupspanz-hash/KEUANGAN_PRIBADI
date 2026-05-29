@@ -15,7 +15,9 @@ import {
   BrainCircuit,
   AlertCircle,
   Lightbulb,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Upload
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -36,21 +38,21 @@ import { toast } from 'react-hot-toast';
 import { getAIInsights } from '../services/aiService';
 import { Transaction, EXPENSE_CATEGORIES } from '../types';
 import { cn, OperationType, handleDatabaseError } from '../firebase/utils';
+import FinancialHealthCard from '../components/FinancialHealthCard';
 
 export default function DashboardPage() {
-  const { user, transactions, setTransactions, insights, setInsights } = useStore();
+  const { user, transactions, setTransactions, insights, setInsights, debts, setDebts, goals, setGoals } = useStore();
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
   useEffect(() => {
     if (!user) return;
 
     const tRef = ref(db, `transactions/${user.uid}`);
-    const unsubscribe = onValue(tRef, (snapshot) => {
+    const unsubscribeTxs = onValue(tRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const txs = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Transaction[];
         
-        // Sort manually
         txs.sort((a: any, b: any) => {
           const dateA = new Date(a.date).getTime() || 0;
           const dateB = new Date(b.date).getTime() || 0;
@@ -65,8 +67,34 @@ export default function DashboardPage() {
       handleDatabaseError(error, OperationType.LIST, 'transactions', false);
     });
 
-    return () => unsubscribe();
-  }, [user, setTransactions]);
+    const dRef = ref(db, `debts/${user.uid}`);
+    const unsubscribeDebts = onValue(dRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        setDebts(items as any[]);
+      } else {
+        setDebts([]);
+      }
+    });
+
+    const gRef = ref(db, `goals/${user.uid}`);
+    const unsubscribeGoals = onValue(gRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        setGoals(items as any[]);
+      } else {
+        setGoals([]);
+      }
+    });
+
+    return () => {
+      unsubscribeTxs();
+      unsubscribeDebts();
+      unsubscribeGoals();
+    };
+  }, [user, setTransactions, setDebts, setGoals]);
 
   const stats = {
     balance: transactions.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
@@ -77,6 +105,11 @@ export default function DashboardPage() {
       .filter(tx => tx.type === 'expense' && isWithinInterval(new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) }))
       .reduce((acc, tx) => acc + tx.amount, 0),
   };
+
+  const totalTabungan = goals.reduce((acc, g) => acc + g.currentAmount, 0) + 
+    transactions.filter(tx => tx.type === 'expense' && tx.category === 'Investasi' && isWithinInterval(new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) })).reduce((acc, tx) => acc + tx.amount, 0);
+
+  const totalUtang = debts.filter(d => d.status === 'unpaid').reduce((acc, d) => acc + d.amount, 0);
 
   const generateInsights = async () => {
     if (isGeneratingInsights) return;
@@ -141,52 +174,51 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+      {/* Health Score Card (Full Width) */}
+      <FinancialHealthCard 
+        totalPendapatan={stats.income} 
+        totalPengeluaran={stats.expense} 
+        totalTabungan={totalTabungan} 
+        totalUtang={totalUtang} 
+      />
+
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Total Saldo', value: stats.balance, icon: Wallet, color: 'text-white', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
-          { label: 'Pendapatan Bulanan', value: stats.income, icon: TrendingUp, color: 'text-emerald-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
-          { label: 'Pengeluaran Bulanan', value: stats.expense, icon: TrendingDown, color: 'text-rose-400', bgColor: 'bg-[#161B22]', borderColor: 'border-slate-800' },
+          { label: 'Total Saldo', value: stats.balance, icon: Wallet, color: 'text-white', iconColor: 'text-indigo-400', iconBg: 'bg-indigo-500/10', bgColor: 'bg-[#161B22]', borderColor: 'border-white/5' },
+          { label: 'Pendapatan Bulanan', value: stats.income, icon: Download, color: 'text-emerald-400', iconColor: 'text-emerald-400', iconBg: 'bg-emerald-500/10', bgColor: 'bg-[#161B22]', borderColor: 'border-white/5' },
+          { label: 'Pengeluaran Bulanan', value: stats.expense, icon: Upload, color: 'text-rose-400', iconColor: 'text-rose-400', iconBg: 'bg-rose-500/10', bgColor: 'bg-[#161B22]', borderColor: 'border-white/5' },
         ].map((stat, idx) => (
           <motion.div
             key={idx}
             whileHover={{ y: -3 }}
             className={cn(
-              "p-4 md:p-5 rounded-2xl border transition-all duration-300",
+              "p-6 rounded-3xl border transition-all duration-300 flex flex-col",
               stat.bgColor,
               stat.borderColor,
-              idx === 0 ? "col-span-2 lg:col-span-1" : "col-span-1"
             )}
           >
-            <p className="text-slate-400 text-xs md:text-sm font-medium">{stat.label}</p>
-            <h3 className={cn("text-lg sm:text-2xl font-semibold mt-1 truncate", stat.color)}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className={cn("p-3 rounded-xl", stat.iconBg)}>
+                <stat.icon className={cn("w-6 h-6", stat.iconColor)} />
+              </div>
+              <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
+            </div>
+            
+            <h3 className={cn("text-2xl sm:text-3xl font-bold tracking-tight mb-2 truncate", stat.color)}>
               {formatRupiah(stat.value)}
             </h3>
-            {idx === 0 && <p className="text-emerald-500 text-xs font-bold mt-1.5">+4.5% dari bulan lalu</p>}
-            {idx > 0 && (
-              <div className="w-full bg-slate-800 h-1 mt-3 rounded-full overflow-hidden">
-                <div 
-                  className={cn("h-full", idx === 1 ? "bg-emerald-500" : "bg-rose-500")} 
-                  style={{ width: idx === 1 ? '85%' : '25%' }} 
-                />
-              </div>
-            )}
+            
+            <p className="text-emerald-500 text-xs font-bold mb-4">+4.5% dari bulan lalu</p>
+            
+            <div className="w-full bg-slate-800 h-1 mt-auto rounded-full overflow-hidden">
+              <div 
+                className={cn("h-full", idx === 0 ? "bg-indigo-500" : idx === 1 ? "bg-emerald-500" : "bg-rose-500")} 
+                style={{ width: idx === 0 ? '100%' : idx === 1 ? '70%' : '40%' }} 
+              />
+            </div>
           </motion.div>
         ))}
-        {/* Health Score Card */}
-        <motion.div
-          whileHover={{ y: -3 }}
-          className="bg-gradient-to-br from-emerald-600 to-teal-800 p-4 md:p-5 rounded-2xl border border-emerald-400/20 col-span-2 lg:col-span-1 flex flex-col justify-between"
-        >
-          <div>
-            <p className="text-emerald-100 text-xs md:text-sm font-semibold">Skor Kesehatan Finansial</p>
-            <div className="flex items-end gap-2 text-white">
-              <h3 className="text-2xl sm:text-4xl font-semibold mt-1">84</h3>
-              <span className="text-emerald-100/90 text-xs mb-1 font-bold  tracking-wider">Luar Biasa</span>
-            </div>
-          </div>
-          <p className="text-emerald-100/80 text-xs mt-2 font-medium">Rasio tabungan & tingkat hutang aman</p>
-        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -357,7 +389,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={cn(
                     "w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-xs shrink-0 select-none",
-                    tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                    tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : tx.type === 'expense' ? "bg-rose-500/10 text-rose-400" : "bg-indigo-500/10 text-indigo-400"
                   )}>
                     {tx.category[0]}
                   </div>
@@ -368,9 +400,9 @@ export default function DashboardPage() {
                 </div>
                 <p className={cn(
                   "text-sm sm:text-md font-semibold tracking-tight shrink-0 pl-2",
-                  tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
+                  tx.type === 'income' ? "text-emerald-400" : tx.type === 'expense' ? "text-rose-400" : "text-indigo-400"
                 )}>
-                  {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
+                  {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}{formatRupiah(tx.amount)}
                 </p>
               </div>
             ))}

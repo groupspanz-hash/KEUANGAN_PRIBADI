@@ -100,12 +100,39 @@ export default function BudgetPage() {
       .reduce((acc, tx) => acc + tx.amount, 0);
   };
 
+  const totalBudgetInMonth = budgets
+    .filter(b => b.month === selectedMonth)
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const totalSpentInMonth = budgets
+    .filter(b => b.month === selectedMonth)
+    .reduce((acc, curr) => acc + calculateSpending(curr.category), 0);
+
   return (
     <div className="space-y-8 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-white">Perencana Anggaran</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-white mb-2">Perencana Anggaran</h1>
           <p className="text-slate-400 font-medium tracking-tight">Tetapkan batasan Anda. Bangun masa depan Anda.</p>
+          
+          <div className="mt-6 flex flex-wrap gap-8 items-center bg-black/20 p-5 rounded-2xl border border-white/5">
+            <div>
+              <p className="text-sm font-bold text-slate-500 mb-1">Total Anggaran</p>
+              <p className="text-2xl font-bold text-white tracking-tight">{formatRupiah(totalBudgetInMonth)}</p>
+            </div>
+            <div className="w-px h-10 bg-white/10 hidden sm:block"></div>
+            <div>
+              <p className="text-sm font-bold text-slate-500 mb-1">Total Terpakai</p>
+              <p className="text-2xl font-bold text-emerald-400 tracking-tight">{formatRupiah(totalSpentInMonth)}</p>
+            </div>
+            <div className="w-px h-10 bg-white/10 hidden sm:block"></div>
+            <div>
+              <p className="text-sm font-bold text-slate-500 mb-1">Sisa Anggaran</p>
+              <p className={`text-2xl font-bold tracking-tight ${totalBudgetInMonth - totalSpentInMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {formatRupiah(totalBudgetInMonth - totalSpentInMonth)}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <input 

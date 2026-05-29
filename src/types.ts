@@ -1,4 +1,4 @@
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'transfer';
 
 export interface User {
   uid: string;
@@ -20,6 +20,7 @@ export interface Transaction {
   date: number; // Storing as milliseconds for sorting capability
   receiptUrl?: string;
   debtId?: string;
+  goalId?: string;
   createdAt: number;
   updatedAt?: number;
   isRecurring?: boolean;
