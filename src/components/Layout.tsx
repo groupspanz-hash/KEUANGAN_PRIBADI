@@ -45,7 +45,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#0A0C10] text-slate-200 font-sans overflow-x-hidden">
+    <div className="flex min-h-screen bg-transparent text-slate-200 font-sans overflow-x-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <Sidebar />
@@ -68,7 +68,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {user?.photoURL ? (
             <img src={user.photoURL} alt={user.displayName || 'User'} className="w-full h-full rounded-full object-cover" />
           ) : (
-            <span className="text-xs font-black text-emerald-400">
+            <span className="text-xs font-semibold text-emerald-400">
               {user?.displayName?.[0] || user?.email?.[0] || 'U'}
             </span>
           )}
@@ -97,7 +97,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <div>
                 <div className="flex items-center justify-between mb-8">
-                  <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Akun & Sesi</span>
+                  <span className="text-sm font-semibold text-slate-400  tracking-wide">Akun & Sesi</span>
                   <button 
                     onClick={() => setIsDrawerOpen(false)}
                     className="p-2 bg-slate-900 rounded-xl hover:bg-slate-800 text-slate-400"
@@ -125,7 +125,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <div className="bg-emerald-950/20 rounded-2xl p-5 border border-emerald-500/10 mb-6 flex gap-3">
                   <Quote className="w-5 h-5 text-emerald-500 shrink-0" />
                   <div>
-                    <h5 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-1.5">Wawasan AI</h5>
+                    <h5 className="text-xs font-semibold text-emerald-500  tracking-wide mb-1.5">Wawasan AI</h5>
                     <p className="text-xs text-slate-300 italic leading-relaxed">
                       "Setiap rupiah yang disimpan dengan penuh kesadaran adalah jembatan menuju ketenangan hidup."
                     </p>
@@ -187,7 +187,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               )} />
               
               <span className={cn(
-                "text-[9px] font-bold mt-1 tracking-tight truncate max-w-full",
+                "text-[11px] font-bold mt-1 tracking-tight truncate max-w-full",
                 isActive 
                   ? "text-emerald-400" 
                   : "text-slate-500"

@@ -1,3 +1,4 @@
+import { formatRupiah } from '../utils/currency';
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
@@ -60,7 +61,7 @@ const transactionSchema = z.object({
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export default function TransactionsPage() {
-  const { user, transactions, setTransactions, debts, setDebts } = useStore();
+  const { user, transactions, setTransactions, debts, setDebts, budgets } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -250,6 +251,30 @@ export default function TransactionsPage() {
         toast.success('Transaksi ditambahkan');
       }
 
+      // Check for budget limit
+      if (data.type === 'expense') {
+        const txMonth = format(finalDate, 'yyyy-MM');
+        const budget = budgets.find((b: any) => b.category === data.category && b.month === txMonth);
+        if (budget) {
+          const currentSpent = transactions
+            .filter(t => t.type === 'expense' && t.category === data.category && format(new Date(t.date), 'yyyy-MM') === txMonth && t.id !== currentEditingTx?.id)
+            .reduce((sum, t) => sum + t.amount, 0);
+          
+          if (currentSpent + data.amount > budget.amount) {
+            setTimeout(() => {
+              toast(`Transaksi melampaui anggaran ${data.category}!`, { 
+                icon: '⚠️',
+                style: {
+                  background: '#1e293b',
+                  color: '#fbbf24',
+                  border: '1px solid #78350f'
+                }
+              });
+            }, 600);
+          }
+        }
+      }
+
       // 3. Set/apply new debt payment logic if category is 'Pembayaran Hutang' and debtId is chosen
       if (data.category === 'Pembayaran Hutang' && data.debtId) {
         const debtRef = ref(db, `debts/${user.uid}/${data.debtId}`);
@@ -262,7 +287,7 @@ export default function TransactionsPage() {
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
           }).catch(console.error);
-          toast.success(`Hutang berkurang sebesar Rp. ${data.amount.toLocaleString()}. Sisa: Rp. ${newAmount.toLocaleString()}`);
+          toast.success(`Hutang berkurang sebesar ${formatRupiah(data.amount)}. Sisa: ${formatRupiah(newAmount)}`);
         }
       }
 
@@ -310,7 +335,7 @@ export default function TransactionsPage() {
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
               }));
-              toast.success(`Saldo Hutang dikembalikan sebesar Rp. ${tx.amount.toLocaleString()}`);
+              toast.success(`Saldo Hutang dikembalikan sebesar ${formatRupiah(tx.amount)}`);
             }
           } catch (e) {
             console.error("Failed to restore debt balance on deletion:", e);
@@ -390,12 +415,12 @@ export default function TransactionsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">{t.title}</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-white">{t.title}</h1>
           <p className="text-slate-400 font-medium">{t.subtitle}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-6 h-6" />
           {t.addBtn}
@@ -411,12 +436,12 @@ export default function TransactionsPage() {
             placeholder={t.search}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
+            className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
           />
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-          <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-900 border border-slate-800 rounded-2xl p-2 px-3 grow sm:grow-0">
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl p-2 px-3 grow sm:grow-0">
             <input 
               type="date"
               value={startDate}
@@ -435,7 +460,7 @@ export default function TransactionsPage() {
             {(startDate || endDate) && (
               <button 
                 onClick={() => { setStartDate(''); setEndDate(''); }} 
-                className="ml-2 px-2 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors scale-90"
+                className="ml-2 px-2 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg text-xs font-semibold  tracking-wide transition-colors scale-90"
               >
                 Reset
               </button>
@@ -471,11 +496,11 @@ export default function TransactionsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
               key={tx.id}
-              className="bg-[#161B22] border border-slate-800 rounded-3xl p-6 group hover:border-emerald-500/30 transition-all backdrop-blur-sm"
+              className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-6 group hover:border-emerald-500/30 transition-all backdrop-blur-sm"
             >
               <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className={cn(
-                  "w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shrink-0 transition-transform group-hover:scale-110",
+                  "w-16 h-16 rounded-2xl flex items-center justify-center font-semibold text-2xl shrink-0 transition-transform group-hover:scale-110",
                   tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
                 )}>
                   {tx.category[0]}
@@ -485,19 +510,19 @@ export default function TransactionsPage() {
                   <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
                     <h3 className="text-xl font-bold truncate text-white">{tx.description}</h3>
                     {tx.isRecurring && (
-                      <span className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-widest bg-blue-500/10 px-2 py-1 rounded-md text-blue-400 mx-auto md:mx-0">
+                      <span className="inline-flex items-center gap-1 text-xs  font-semibold tracking-wide bg-blue-500/10 px-2 py-1 rounded-md text-blue-400 mx-auto md:mx-0">
                         <RefreshCw className="w-3 h-3" />
                         Berulang
                       </span>
                     )}
                     {tx.receiptUrl && (
-                      <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-widest bg-emerald-500/10 px-2 py-1 rounded-md text-emerald-400 hover:bg-emerald-500/20 transition-colors mx-auto md:mx-0">
+                      <a href={tx.receiptUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs  font-semibold tracking-wide bg-emerald-500/10 px-2 py-1 rounded-md text-emerald-400 hover:bg-emerald-500/20 transition-colors mx-auto md:mx-0">
                         <ImageIcon className="w-3 h-3" />
                         Kwitansi
                       </a>
                     )}
                   </div>
-                  <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-4 text-xs font-semibold text-slate-500  tracking-wide">
                     <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> {tx.category}</span>
                     <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {format(new Date(tx.date), 'MMM dd, yyyy')}</span>
                     <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> {tx.paymentMethod}</span>
@@ -506,10 +531,10 @@ export default function TransactionsPage() {
 
                 <div className="flex items-center gap-8 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-800 pt-4 md:pt-0">
                   <p className={cn(
-                    "text-2xl font-black tracking-tighter",
+                    "text-2xl font-semibold tracking-tighter",
                     tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                   )}>
-                    {tx.type === 'income' ? '+' : '-'}Rp. {tx.amount.toLocaleString()}
+                    {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
                   </p>
                   <div className="flex items-center gap-2">
                     <button 
@@ -558,10 +583,10 @@ export default function TransactionsPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className="relative w-full max-w-2xl bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-2xl bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="px-8 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/30">
-                <h2 className="text-2xl font-black text-white">{editingTransaction ? 'Ubah Transaksi' : 'Transaksi Baru'}</h2>
+                <h2 className="text-2xl font-semibold text-white">{editingTransaction ? 'Ubah Transaksi' : 'Transaksi Baru'}</h2>
                 <button 
                   onClick={handleCloseModal}
                   className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"
@@ -578,7 +603,7 @@ export default function TransactionsPage() {
                       type="button"
                       onClick={() => setValue('type', type as any)}
                       className={cn(
-                        "py-6 rounded-2xl font-black text-xs uppercase tracking-widest border transition-all flex flex-col items-center gap-3",
+                        "py-6 rounded-2xl font-semibold text-xs  tracking-wide border transition-all flex flex-col items-center gap-3",
                         selectedType === type
                           ? type === 'income' 
                             ? "bg-emerald-500 border-transparent text-white" 
@@ -594,14 +619,14 @@ export default function TransactionsPage() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Jumlah (Rp)</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Jumlah (Rp)</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-500 select-none">Rp</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500 select-none">Rp</span>
                       <input
                         type="number"
                         step="1"
                         {...register('amount', { valueAsNumber: true })}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white font-bold"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white font-bold"
                         placeholder="0"
                       />
                     </div>
@@ -609,13 +634,13 @@ export default function TransactionsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Tanggal</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Tanggal</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <input
                         type="date"
                         {...register('date')}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white"
                       />
                     </div>
                   </div>
@@ -623,12 +648,12 @@ export default function TransactionsPage() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Kategori</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Kategori</label>
                     <div className="relative">
                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select
                         {...register('category')}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
                       >
                         <option value="" disabled className="bg-slate-900 text-white">Pilih Kategori</option>
                         {(selectedType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
@@ -638,12 +663,12 @@ export default function TransactionsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Metode Pembayaran</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Metode Pembayaran</label>
                     <div className="relative">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                       <select
                         {...register('paymentMethod')}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white font-medium"
                       >
                         <option value="" disabled className="bg-slate-900 text-white">Pilih Metode</option>
                         {PAYMENT_METHODS.map(method => <option key={method} value={method === 'Cash' ? 'Tunai' : method} className="bg-slate-900 text-white">{method === 'Cash' ? 'Tunai' : method}</option>)}
@@ -660,7 +685,7 @@ export default function TransactionsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-2 p-5 bg-slate-950/20 border border-emerald-500/25 rounded-2xl"
                   >
-                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] px-1">Hubungkan & Sesuaikan Sisa Hutang</label>
+                    <label className="text-xs font-semibold text-emerald-400  tracking-wide px-1">Hubungkan & Sesuaikan Sisa Hutang</label>
                     <div className="relative">
                       <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" />
                       <select
@@ -671,18 +696,18 @@ export default function TransactionsPage() {
                         <option value="" className="bg-slate-900 text-white">-- Pilih Akun Hutang --</option>
                         {debts.filter(d => d.status === 'unpaid' || d.id === editingTransaction?.debtId).map(debt => (
                           <option key={debt.id} value={debt.id} className="bg-slate-900 text-white">
-                             {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: Rp. {debt.amount.toLocaleString()})
+                             {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: {formatRupiah(debt.amount)})
                           </option>
                         ))}
                       </select>
                     </div>
                     {debts.filter(d => d.status === 'unpaid' || d.id === editingTransaction?.debtId).length === 0 && (
-                      <p className="text-rose-400 text-[10px] font-black uppercase tracking-wider mt-1 px-1">⚠️ Tidak ada akun hutang aktif yang belum lunas. Silakan buat akun hutang dulu di menu Hutang & Pinjaman.</p>
+                      <p className="text-rose-400 text-xs font-semibold  tracking-wider mt-1 px-1">⚠️ Tidak ada akun hutang aktif yang belum lunas. Silakan buat akun hutang dulu di menu Hutang & Pinjaman.</p>
                     )}
                   </motion.div>
                 )}
 
-                <div className="space-y-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <div className="space-y-4 bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl p-4">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -698,7 +723,7 @@ export default function TransactionsPage() {
                       animate={{ opacity: 1, height: 'auto' }}
                       className="pt-2 border-t border-slate-800"
                     >
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1 block mb-2">Interval Pengulangan</label>
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1 block mb-2">Interval Pengulangan</label>
                       <select
                         {...register('recurringInterval')}
                         className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white text-sm"
@@ -712,13 +737,13 @@ export default function TransactionsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Deskripsi</label>
+                  <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Deskripsi</label>
                   <div className="relative">
                     <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                     <input
                       type="text"
                       {...register('description')}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white"
+                      className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white"
                       placeholder="Ngopi bersama teman..."
                     />
                   </div>
@@ -726,7 +751,7 @@ export default function TransactionsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1">Kwitansi (Opsional)</label>
+                  <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Kwitansi (Opsional)</label>
                   <div className="relative">
                     <input
                       type="file"
@@ -750,7 +775,7 @@ export default function TransactionsPage() {
                 <button
                   type="submit"
                   disabled={isSaving || isUploading}
-                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-semibold text-lg hover:scale-[1.02] active:scale-[0.98] transition-transform flex items-center justify-center gap-2 disabled:opacity-50 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 >
                   {isSaving || isUploading ? 'Memproses...' : (editingTransaction ? 'Perbarui Transaksi' : 'Buat Transaksi')}
                 </button>

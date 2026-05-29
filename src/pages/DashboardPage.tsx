@@ -1,3 +1,4 @@
+import { formatRupiah } from '../utils/currency';
 import React, { useEffect, useState } from 'react';
 import { 
   ref, 
@@ -128,12 +129,12 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">Dasbor</h1>
+          <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">Dasbor</h1>
           <p className="text-xs sm:text-base text-gray-400 font-medium">Selamat datang kembali, {user?.displayName || 'Pengguna'}</p>
         </div>
         <Link 
           to="/transactions?add=true" 
-          className="hidden sm:flex px-6 py-3 bg-[#10b981] text-white rounded-2xl font-black text-sm items-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_20px_rgba(16,185,129,0.3)] w-fit"
+          className="hidden sm:flex px-6 py-3 bg-[#10b981] text-white rounded-2xl font-semibold text-sm items-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_20px_rgba(16,185,129,0.3)] w-fit"
         >
           <Plus className="w-5 h-5" />
           Tambah Transaksi
@@ -158,10 +159,10 @@ export default function DashboardPage() {
             )}
           >
             <p className="text-slate-400 text-xs md:text-sm font-medium">{stat.label}</p>
-            <h3 className={cn("text-lg sm:text-2xl font-black mt-1 truncate", stat.color)}>
-              Rp. {stat.value.toLocaleString()}
+            <h3 className={cn("text-lg sm:text-2xl font-semibold mt-1 truncate", stat.color)}>
+              {formatRupiah(stat.value)}
             </h3>
-            {idx === 0 && <p className="text-emerald-500 text-[10px] font-bold mt-1.5">+4.5% dari bulan lalu</p>}
+            {idx === 0 && <p className="text-emerald-500 text-xs font-bold mt-1.5">+4.5% dari bulan lalu</p>}
             {idx > 0 && (
               <div className="w-full bg-slate-800 h-1 mt-3 rounded-full overflow-hidden">
                 <div 
@@ -180,11 +181,11 @@ export default function DashboardPage() {
           <div>
             <p className="text-emerald-100 text-xs md:text-sm font-semibold">Skor Kesehatan Finansial</p>
             <div className="flex items-end gap-2 text-white">
-              <h3 className="text-2xl sm:text-4xl font-black mt-1">84</h3>
-              <span className="text-emerald-100/90 text-[10px] mb-1 font-bold uppercase tracking-wider">Luar Biasa</span>
+              <h3 className="text-2xl sm:text-4xl font-semibold mt-1">84</h3>
+              <span className="text-emerald-100/90 text-xs mb-1 font-bold  tracking-wider">Luar Biasa</span>
             </div>
           </div>
-          <p className="text-emerald-100/80 text-[10px] mt-2 font-medium">Rasio tabungan & tingkat hutang aman</p>
+          <p className="text-emerald-100/80 text-xs mt-2 font-medium">Rasio tabungan & tingkat hutang aman</p>
         </motion.div>
       </div>
 
@@ -194,8 +195,8 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-lg font-bold text-white">Analisis Arus Kas</h4>
             <div className="flex gap-2">
-              <span className="px-3 py-1 bg-slate-800 text-[10px] rounded-full text-slate-300 font-bold uppercase tracking-wider">7 Hari Terakhir</span>
-              <span className="px-3 py-1 bg-emerald-500/20 text-[10px] rounded-full text-emerald-400 font-bold uppercase tracking-wider">30 Hari Terakhir</span>
+              <span className="px-3 py-1 bg-slate-800 text-xs rounded-full text-slate-300 font-bold  tracking-wider">7 Hari Terakhir</span>
+              <span className="px-3 py-1 bg-emerald-500/20 text-xs rounded-full text-emerald-400 font-bold  tracking-wider">30 Hari Terakhir</span>
             </div>
           </div>
           <div className="h-[300px] w-full">
@@ -221,7 +222,7 @@ export default function DashboardPage() {
         </div>
 
         {/* AI Insights Card */}
-        <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-6 flex flex-col relative overflow-hidden group">
+        <div className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-6 flex flex-col relative overflow-hidden group">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
@@ -271,7 +272,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Expenses by Category */}
-        <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-5 md:p-8 h-[480px] flex flex-col">
+        <div className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-5 md:p-8 h-[480px] flex flex-col">
           <h3 className="text-lg md:text-xl font-bold mb-6 text-white">Anggaran Kategori</h3>
           <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-6">
             {pieData.map((item, idx) => {
@@ -280,7 +281,7 @@ export default function DashboardPage() {
               return (
                 <div key={idx}>
                   <div className="flex justify-between text-xs mb-2">
-                    <span className="text-slate-400 uppercase font-bold tracking-wider">{item.name}</span>
+                    <span className="text-slate-400  font-bold tracking-wider">{item.name}</span>
                     <span className="font-bold" style={{ color }}>{Math.round(spentPercent)}%</span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -297,15 +298,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Ringkasan Pengeluaran (Bulan Ini) - Scrollable List */}
-        <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-5 md:p-8 flex flex-col h-[480px]">
+        <div className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-5 md:p-8 flex flex-col h-[480px]">
           <div className="mb-6">
             <h3 className="text-lg md:text-xl font-bold text-white leading-normal">Ringkasan Pengeluaran</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Bulan Ini ({format(new Date(), 'MMMM yyyy')})</p>
+            <p className="text-xs text-slate-400 font-bold  tracking-wider mt-0.5">Bulan Ini ({format(new Date(), 'MMMM yyyy')})</p>
           </div>
           
-          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex items-center justify-between mb-6">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Pengeluaran</span>
-            <span className="text-lg font-black text-rose-400">Rp. {stats.expense.toLocaleString()}</span>
+          <div className="bg-white/[0.02] border border-white/5 backdrop-blur-md shadow-lg rounded-2xl p-4 flex items-center justify-between mb-6">
+            <span className="text-xs font-bold text-slate-400  tracking-wide">Total Pengeluaran</span>
+            <span className="text-lg font-semibold text-rose-400">{formatRupiah(stats.expense)}</span>
           </div>
 
           <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-4">
@@ -320,7 +321,7 @@ export default function DashboardPage() {
                       <span className="text-white font-bold">{item.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-slate-400 font-medium font-mono text-[11px]">Rp. {item.value.toLocaleString()}</span>
+                      <span className="text-slate-400 font-medium font-mono text-[11px]">{formatRupiah(item.value)}</span>
                       <span className="font-extrabold text-[11px]" style={{ color }}>{Math.round(percentage)}%</span>
                     </div>
                   </div>
@@ -342,10 +343,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="bg-[#161B22] border border-slate-800 rounded-3xl p-5 md:p-8 h-[480px] flex flex-col">
+        <div className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-5 md:p-8 h-[480px] flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-lg md:text-xl font-bold text-white">Transaksi Terakhir</h3>
-            <Link to="/transactions" className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1 group uppercase tracking-widest">
+            <Link to="/transactions" className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1 group  tracking-wide">
               Lihat Semua
               <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -355,21 +356,21 @@ export default function DashboardPage() {
               <div key={idx} className="flex items-center justify-between p-3.5 bg-slate-900/50 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-colors group">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={cn(
-                    "w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 select-none",
+                    "w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-xs shrink-0 select-none",
                     tx.type === 'income' ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
                   )}>
                     {tx.category[0]}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="font-bold text-xs text-white truncate leading-tight">{tx.description}</h4>
-                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-wider mt-0.5 truncate">{tx.category} • {format(new Date(tx.date), 'MMM dd')}</p>
+                    <p className="text-[11px] text-slate-500  font-semibold tracking-wider mt-0.5 truncate">{tx.category} • {format(new Date(tx.date), 'MMM dd')}</p>
                   </div>
                 </div>
                 <p className={cn(
-                  "text-sm sm:text-md font-black tracking-tight shrink-0 pl-2",
+                  "text-sm sm:text-md font-semibold tracking-tight shrink-0 pl-2",
                   tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                 )}>
-                  {tx.type === 'income' ? '+' : '-'}Rp. {tx.amount.toLocaleString()}
+                  {tx.type === 'income' ? '+' : '-'}{formatRupiah(tx.amount)}
                 </p>
               </div>
             ))}

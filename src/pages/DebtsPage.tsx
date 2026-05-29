@@ -1,3 +1,4 @@
+import { formatRupiah } from '../utils/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   ref, 
@@ -107,12 +108,12 @@ export default function DebtsPage() {
     <div className="space-y-8 pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Hutang & Pinjaman</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-white">Hutang & Pinjaman</h1>
           <p className="text-slate-400 font-medium tracking-tight">Kelola kewajiban Anda dengan transparansi.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+          className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-6 h-6" />
           Tambah Entri
@@ -139,7 +140,7 @@ export default function DebtsPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">{debt.name}</h3>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{debt.type === 'debt' ? 'Hutang' : 'Pinjaman'}</span>
+                  <span className="text-xs font-semibold  tracking-wide text-slate-500">{debt.type === 'debt' ? 'Hutang' : 'Pinjaman'}</span>
                 </div>
               </div>
               <button 
@@ -154,8 +155,8 @@ export default function DebtsPage() {
             </div>
 
             <div className="space-y-4">
-              <p className="text-4xl font-black tracking-tighter text-white">Rp. {debt.amount.toLocaleString()}</p>
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-4xl font-semibold tracking-tighter text-white">{formatRupiah(debt.amount)}</p>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500  tracking-wide">
                 <Calendar className="w-4 h-4" />
                 Jatuh Tempo: {debt.dueDate ? format(new Date(debt.dueDate), 'MMM dd, yyyy') : 'Tanpa tanggal jatuh tempo'}
               </div>
@@ -164,7 +165,7 @@ export default function DebtsPage() {
             <div className="mt-8 pt-6 border-t border-slate-800 flex gap-2">
               <button 
                 onClick={() => { setEditingDebt(debt); setIsModalOpen(true); }}
-                className="flex-1 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-white"
+                className="flex-1 py-3 bg-slate-800/50 hover:bg-slate-800 rounded-xl text-xs font-semibold  tracking-wide transition-colors text-slate-400 hover:text-white"
               >
                 Ubah
               </button>
@@ -194,10 +195,10 @@ export default function DebtsPage() {
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.9 }} 
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-              className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">{editingDebt ? 'Perbarui Entri' : 'Kewajiban Baru'}</h2>
+                <h2 className="text-2xl font-semibold text-white">{editingDebt ? 'Perbarui Entri' : 'Kewajiban Baru'}</h2>
                 <button 
                   onClick={() => { if (!isSaving) { setIsModalOpen(false); setEditingDebt(null); } }} 
                   disabled={isSaving}
@@ -209,61 +210,61 @@ export default function DebtsPage() {
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Orang / Institusi</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Orang / Institusi</label>
                     <input 
                       type="text" 
                       name="name" 
                       defaultValue={editingDebt?.name} 
                       required 
                       disabled={isSaving}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                      className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
                       placeholder="misal: Bank ABC" 
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah (Rp)</label>
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Jumlah (Rp)</label>
                       <input 
                         type="number" 
                         name="amount" 
                         defaultValue={editingDebt?.amount} 
                         required 
                         disabled={isSaving}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
                         placeholder="1000000" 
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tanggal Jatuh Tempo</label>
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Tanggal Jatuh Tempo</label>
                       <input 
                         type="date" 
                         name="dueDate" 
                         defaultValue={editingDebt?.dueDate ? format(new Date(editingDebt.dueDate), 'yyyy-MM-dd') : ''} 
                         disabled={isSaving}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tipe</label>
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Tipe</label>
                       <select 
                         name="type" 
                         defaultValue={editingDebt?.type || 'debt'} 
                         disabled={isSaving}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
                       >
                         <option value="debt">Hutang (Saya berhutang pada mereka)</option>
                         <option value="loan">Pinjaman (Mereka berhutang pada saya)</option>
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Status</label>
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Status</label>
                       <select 
                         name="status" 
                         defaultValue={editingDebt?.status || 'unpaid'} 
                         disabled={isSaving}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none text-white disabled:opacity-50"
                       >
                         <option value="unpaid">Belum Dibayar</option>
                         <option value="paid">Sudah Dibayar</option>
@@ -274,7 +275,7 @@ export default function DebtsPage() {
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-105 transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-semibold text-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 >
                   {isSaving ? 'Memproses...' : 'Simpan Entri'}
                 </button>

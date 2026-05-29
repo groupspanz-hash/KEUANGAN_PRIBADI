@@ -9,7 +9,11 @@
 
 @layer base {
   body {
-    @apply font-sans bg-[#0A0C10] text-slate-200 antialiased;
+    @apply font-sans bg-[#050608] text-slate-200 antialiased relative min-h-screen;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(16, 185, 129, 0.03), transparent 25%),
+      radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.03), transparent 25%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {

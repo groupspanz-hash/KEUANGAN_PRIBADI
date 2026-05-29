@@ -31,8 +31,8 @@ export default function LoadingScreen() {
         transition={{ delay: 0.3 }}
         className="text-center"
       >
-        <h2 className="text-white font-black text-xs uppercase tracking-[0.3em] mb-2">System Initializing</h2>
-        <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest animate-pulse">Syncing Encrypted Ledger...</p>
+        <h2 className="text-white font-semibold text-xs  tracking-wide mb-2">System Initializing</h2>
+        <p className="text-slate-500 font-bold text-xs  tracking-wide animate-pulse">Syncing Encrypted Ledger...</p>
       </motion.div>
     </div>
   );

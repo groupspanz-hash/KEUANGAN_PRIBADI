@@ -1,3 +1,4 @@
+import { formatRupiah } from '../utils/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   ref, 
@@ -20,7 +21,8 @@ import {
   TrendingDown,
   CheckCircle2,
   Trash2,
-  Pencil
+  Pencil,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -102,7 +104,7 @@ export default function BudgetPage() {
     <div className="space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Perencana Anggaran</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-white">Perencana Anggaran</h1>
           <p className="text-slate-400 font-medium tracking-tight">Tetapkan batasan Anda. Bangun masa depan Anda.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -110,11 +112,11 @@ export default function BudgetPage() {
             type="month" 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 font-bold focus:outline-none focus:border-emerald-500 transition-all text-white"
+            className="bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl px-6 py-4 font-bold focus:outline-none focus:border-emerald-500 transition-all text-white"
           />
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+            className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           >
             <Plus className="w-6 h-6" />
             Atur Anggaran
@@ -126,14 +128,15 @@ export default function BudgetPage() {
         {budgets.filter(b => b.month === selectedMonth).map((budget) => {
           const spent = calculateSpending(budget.category);
           const percent = Math.min((spent / budget.amount) * 100, 100);
-          const isOver = spent > budget.amount;
-          const isNearlyOver = percent > 85 && !isOver;
+          const isOver = spent >= budget.amount;
+          const isNearlyOver = percent >= 80 && percent < 100;
+          const isHalf = percent >= 50 && percent < 80;
 
           return (
             <motion.div
               layout
               key={budget.id}
-              className="bg-[#161B22] border border-slate-800 rounded-3xl p-8 backdrop-blur-xl relative group overflow-hidden"
+              className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-8 backdrop-blur-xl relative group overflow-hidden"
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -169,35 +172,52 @@ export default function BudgetPage() {
               </div>
 
               <div className="flex items-baseline justify-between mb-4">
-                <p className="text-3xl font-black text-white tracking-tighter">
-                  Rp. {spent.toLocaleString()}
-                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">terpakai dari Rp. {budget.amount.toLocaleString()}</span>
+                <p className="text-3xl font-semibold text-white tracking-tighter">
+                  {formatRupiah(spent)}
+                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2">terpakai dari {formatRupiah(budget.amount)}</span>
                 </p>
               </div>
 
               <div className="space-y-4">
-                <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${percent}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
                     className={cn(
-                      "h-full rounded-full transition-colors duration-500",
-                      isOver ? "bg-rose-500" : isNearlyOver ? "bg-amber-500" : "bg-emerald-500"
+                      "h-full rounded-full transition-colors duration-500 relative",
+                      isOver ? "bg-gradient-to-r from-rose-500 to-rose-400" : isNearlyOver ? "bg-gradient-to-r from-amber-500 to-amber-400" : isHalf ? "bg-gradient-to-r from-yellow-500 to-yellow-400" : "bg-gradient-to-r from-emerald-500 to-emerald-400"
                     )}
-                  />
+                  >
+                    <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30 blur-[2px]"></div>
+                  </motion.div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2 mt-4">
                   {isOver ? (
-                    <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold uppercase tracking-widest">
-                      <AlertTriangle className="w-4 h-4" /> Melebihi Anggaran
+                    <div className="flex items-center gap-1.5 text-rose-400 text-xs font-bold tracking-wide">
+                      <AlertTriangle className="w-4 h-4" /> Budget Habis
                     </div>
                   ) : isNearlyOver ? (
-                    <div className="flex items-center gap-1.5 text-amber-500 text-[10px] font-bold uppercase tracking-widest">
-                      <TrendingDown className="w-4 h-4" /> Hampir tercapai
+                    <div className="flex items-center gap-1.5 text-amber-500 text-xs font-bold tracking-wide">
+                      <TrendingDown className="w-4 h-4" /> Budget Hampir Habis
+                    </div>
+                  ) : isHalf ? (
+                    <div className="flex items-center gap-1.5 text-yellow-500 text-xs font-bold tracking-wide">
+                      <Info className="w-4 h-4" /> Budget Sudah 50%
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
+                    <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold tracking-wide">
                       <CheckCircle2 className="w-4 h-4" /> Sesuai jalur
+                    </div>
+                  )}
+                  {!isOver && (
+                    <div className="text-xs font-bold text-slate-400">
+                      Sisa: {formatRupiah(budget.amount - spent)}
+                    </div>
+                  )}
+                  {isOver && spent > budget.amount && (
+                    <div className="text-xs font-bold text-rose-400">
+                      Lebih: {formatRupiah(spent - budget.amount)}
                     </div>
                   )}
                 </div>
@@ -225,10 +245,10 @@ export default function BudgetPage() {
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.9 }} 
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }} 
-              className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">{editingBudget ? 'Ubah Anggaran' : 'Atur Anggaran Kategori'}</h2>
+                <h2 className="text-2xl font-semibold text-white">{editingBudget ? 'Ubah Anggaran' : 'Atur Anggaran Kategori'}</h2>
                 <button 
                   onClick={() => { if (!isSaving) setIsModalOpen(false); }}
                   disabled={isSaving}
@@ -240,26 +260,26 @@ export default function BudgetPage() {
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Kategori</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Kategori</label>
                     <div className="relative">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <select name="category" defaultValue={editingBudget?.category || ''} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white disabled:opacity-50">
+                      <select name="category" defaultValue={editingBudget?.category || ''} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white disabled:opacity-50">
                         {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
                       </select>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Jumlah Anggaran (Rp)</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Jumlah Anggaran (Rp)</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-500 select-none">Rp</span>
-                      <input type="number" name="amount" defaultValue={editingBudget?.amount} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: 500000" required />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500 select-none">Rp</span>
+                      <input type="number" name="amount" defaultValue={editingBudget?.amount} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: 500000" required />
                     </div>
                   </div>
                 </div>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center"
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-semibold text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center"
                 >
                   {isSaving ? 'Memproses...' : (editingBudget ? 'Perbarui Anggaran' : 'Atur Anggaran')}
                 </button>

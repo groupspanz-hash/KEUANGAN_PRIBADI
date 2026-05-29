@@ -1,3 +1,4 @@
+import { formatRupiah } from '../utils/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   ref, 
@@ -102,12 +103,12 @@ export default function GoalsPage() {
     <div className="space-y-6 md:space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">Target Tabungan</h1>
+          <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-white">Target Tabungan</h1>
           <p className="text-xs sm:text-base text-slate-400 font-medium tracking-tight">Bermimpi besar. Menabung secara konsisten. Menangkan hidup.</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-3.5 bg-emerald-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_20px_rgba(16,185,129,0.3)] w-full sm:w-auto shrink-0"
+          className="px-6 py-3.5 bg-emerald-500 text-white rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_20px_rgba(16,185,129,0.3)] w-full sm:w-auto shrink-0"
         >
           <Plus className="w-5 h-5" />
           Tambah Target
@@ -123,17 +124,17 @@ export default function GoalsPage() {
             <motion.div
               layout
               key={goal.id}
-              className="bg-[#161B22] border border-slate-800 rounded-3xl p-5 md:p-10 backdrop-blur-xl relative group overflow-hidden"
+              className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-5 md:p-10 backdrop-blur-xl relative group overflow-hidden"
             >
               <div className="flex items-start justify-between mb-6 md:mb-10">
                 <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
                   <div className="w-12 h-12 md:w-16 md:h-16 bg-emerald-500/10 rounded-2xl md:rounded-3xl flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform shrink-0">
                     <Icon className="w-6 h-6 md:w-8 md:h-8" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-lg md:text-2xl font-black text-white truncate leading-tight">{goal.name}</h3>
-                    <p className="text-slate-500 font-black uppercase text-[9px] md:text-[10px] tracking-wider mt-1 truncate">
-                      Target: Rp. {goal.targetAmount.toLocaleString()}
+                  <div className="min-w-0 flex-1 pr-4">
+                    <h3 className="text-lg md:text-2xl font-semibold text-white break-words leading-tight">{goal.name}</h3>
+                    <p className="text-slate-500 font-semibold text-[11px] md:text-xs tracking-wider mt-1 break-words">
+                      Target: {formatRupiah(goal.targetAmount)}
                     </p>
                   </div>
                 </div>
@@ -166,27 +167,30 @@ export default function GoalsPage() {
 
               <div className="space-y-4 md:space-y-6">
                 <div className="flex flex-wrap items-end justify-between gap-2">
-                  <span className="text-xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white">Rp. {goal.currentAmount.toLocaleString()}</span>
-                  <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[9px] md:text-xs font-black uppercase tracking-widest border border-emerald-500/20 shrink-0">
+                  <span className="text-xl sm:text-3xl md:text-4xl font-semibold tracking-tighter text-white">{formatRupiah(goal.currentAmount)}</span>
+                  <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[11px] md:text-xs font-semibold  tracking-wide border border-emerald-500/20 shrink-0">
                     {percent.toFixed(0)}% Tercapai
                   </span>
                 </div>
                 
-                <div className="h-2.5 w-full bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
                   <motion.div 
                     initial={{ width: 0 }}
                     animate={{ width: `${percent}%` }}
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
-                  />
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 relative"
+                  >
+                    <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30 blur-[2px]"></div>
+                  </motion.div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[9px] md:text-[10px] font-bold text-slate-500 tracking-wider uppercase gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] md:text-xs font-bold text-slate-500 tracking-wider  gap-2">
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Calendar className="w-3.5 h-3.5" />
                     {goal.deadline ? format(new Date(goal.deadline), 'MMMM dd, yyyy') : 'Tanpa Tenggat Waktu'}
                   </div>
-                  <div className="text-emerald-400/80 font-black sm:text-right">
-                    Rp. {(goal.targetAmount - goal.currentAmount).toLocaleString()} lagi untuk mencapai target
+                  <div className="text-emerald-400/80 font-semibold sm:text-right">
+                    {formatRupiah((goal.targetAmount - goal.currentAmount))} lagi untuk mencapai target
                   </div>
                 </div>
               </div>
@@ -206,10 +210,10 @@ export default function GoalsPage() {
               animate={{ opacity: 1, scale: 1 }} 
               exit={{ opacity: 0, scale: 0.9 }} 
               transition={{ type: 'spring', bounce: 0, duration: 0.4 }} 
-              className="relative w-full max-w-lg bg-[#161B22] border border-slate-800 rounded-[32px] overflow-hidden shadow-2xl"
+              className="relative w-full max-w-lg bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black text-white">{editingGoal ? 'Perbarui Target' : 'Target Tabungan Baru'}</h2>
+                <h2 className="text-2xl font-semibold text-white">{editingGoal ? 'Perbarui Target' : 'Target Tabungan Baru'}</h2>
                 <button 
                   onClick={() => { if (!isSaving) setIsModalOpen(false); }} 
                   disabled={isSaving}
@@ -221,28 +225,28 @@ export default function GoalsPage() {
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Nama Target</label>
-                    <input type="text" name="name" defaultValue={editingGoal?.name} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: Mobil Listrik Baru" required />
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Nama Target</label>
+                    <input type="text" name="name" defaultValue={editingGoal?.name} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: Mobil Listrik Baru" required />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Target (Rp)</label>
-                      <input type="number" name="targetAmount" defaultValue={editingGoal?.targetAmount} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="50000000" required />
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Target (Rp)</label>
+                      <input type="number" name="targetAmount" defaultValue={editingGoal?.targetAmount} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="50000000" required />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Saat Ini (Rp)</label>
-                      <input type="number" name="currentAmount" defaultValue={editingGoal?.currentAmount} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="1000000" required />
+                      <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Saat Ini (Rp)</label>
+                      <input type="number" name="currentAmount" defaultValue={editingGoal?.currentAmount} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="1000000" required />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tanggal Target</label>
-                    <input type="date" name="deadline" defaultValue={editingGoal?.deadline ? format(new Date(editingGoal.deadline), 'yyyy-MM-dd') : ''} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" />
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Tanggal Target</label>
+                    <input type="date" name="deadline" defaultValue={editingGoal?.deadline ? format(new Date(editingGoal.deadline), 'yyyy-MM-dd') : ''} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" />
                   </div>
                 </div>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-black text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-semibold text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isSaving ? 'Memproses...' : (editingGoal ? 'Perbarui Target' : 'Mulai Menabung')}
                 </button>
