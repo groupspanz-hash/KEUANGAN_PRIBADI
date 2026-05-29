@@ -9,6 +9,7 @@ interface FinanceState {
   debts: Debt[];
   insights: AIInsight[];
   loading: boolean;
+  language: 'id' | 'en';
   
   setUser: (user: User | null) => void;
   setTransactions: (transactions: Transaction[]) => void;
@@ -17,6 +18,7 @@ interface FinanceState {
   setDebts: (debts: Debt[]) => void;
   setInsights: (insights: AIInsight[]) => void;
   setLoading: (loading: boolean) => void;
+  setLanguage: (lang: 'id' | 'en') => void;
   clearData: () => void;
 }
 
@@ -28,6 +30,7 @@ export const useStore = create<FinanceState>((set) => ({
   debts: [],
   insights: [],
   loading: true,
+  language: 'id',
 
   setUser: (user) => set({ user }),
   setTransactions: (transactions) => set({ transactions }),
@@ -36,6 +39,7 @@ export const useStore = create<FinanceState>((set) => ({
   setDebts: (debts) => set({ debts }),
   setInsights: (insights) => set({ insights }),
   setLoading: (loading) => set({ loading }),
+  setLanguage: (lang) => set({ language: lang }),
   clearData: () => set({ 
     user: null, 
     transactions: [], 

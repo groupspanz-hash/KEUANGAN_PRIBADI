@@ -170,8 +170,8 @@ export default function BudgetPage() {
 
               <div className="flex items-baseline justify-between mb-4">
                 <p className="text-3xl font-black text-white tracking-tighter">
-                  Rp{spent.toLocaleString()}
-                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">terpakai dari Rp{budget.amount.toLocaleString()}</span>
+                  Rp. {spent.toLocaleString()}
+                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2 lowercase">terpakai dari Rp. {budget.amount.toLocaleString()}</span>
                 </p>
               </div>
 

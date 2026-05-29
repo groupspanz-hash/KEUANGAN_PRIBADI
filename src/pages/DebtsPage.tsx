@@ -154,7 +154,7 @@ export default function DebtsPage() {
             </div>
 
             <div className="space-y-4">
-              <p className="text-4xl font-black tracking-tighter text-white">Rp{debt.amount.toLocaleString()}</p>
+              <p className="text-4xl font-black tracking-tighter text-white">Rp. {debt.amount.toLocaleString()}</p>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 <Calendar className="w-4 h-4" />
                 Jatuh Tempo: {debt.dueDate ? format(new Date(debt.dueDate), 'MMM dd, yyyy') : 'Tanpa tanggal jatuh tempo'}
@@ -238,7 +238,7 @@ export default function DebtsPage() {
                       <input 
                         type="date" 
                         name="dueDate" 
-                        defaultValue={editingDebt?.dueDate ? format(editingDebt.dueDate instanceof Timestamp ? editingDebt.dueDate.toDate() : new Date(editingDebt.dueDate), 'yyyy-MM-dd') : ''} 
+                        defaultValue={editingDebt?.dueDate ? format(new Date(editingDebt.dueDate), 'yyyy-MM-dd') : ''} 
                         disabled={isSaving}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 text-white disabled:opacity-50" 
                       />

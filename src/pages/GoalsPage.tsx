@@ -133,7 +133,7 @@ export default function GoalsPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="text-lg md:text-2xl font-black text-white truncate leading-tight">{goal.name}</h3>
                     <p className="text-slate-500 font-black uppercase text-[9px] md:text-[10px] tracking-wider mt-1 truncate">
-                      Target: Rp{goal.targetAmount.toLocaleString()}
+                      Target: Rp. {goal.targetAmount.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -166,7 +166,7 @@ export default function GoalsPage() {
 
               <div className="space-y-4 md:space-y-6">
                 <div className="flex flex-wrap items-end justify-between gap-2">
-                  <span className="text-xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white">Rp{goal.currentAmount.toLocaleString()}</span>
+                  <span className="text-xl sm:text-3xl md:text-4xl font-black tracking-tighter text-white">Rp. {goal.currentAmount.toLocaleString()}</span>
                   <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[9px] md:text-xs font-black uppercase tracking-widest border border-emerald-500/20 shrink-0">
                     {percent.toFixed(0)}% Tercapai
                   </span>
@@ -183,10 +183,10 @@ export default function GoalsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[9px] md:text-[10px] font-bold text-slate-500 tracking-wider uppercase gap-2">
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Calendar className="w-3.5 h-3.5" />
-                    {goal.deadline ? format(goal.deadline instanceof Timestamp ? goal.deadline.toDate() : new Date(goal.deadline), 'MMMM dd, yyyy') : 'Tanpa Tenggat Waktu'}
+                    {goal.deadline ? format(new Date(goal.deadline), 'MMMM dd, yyyy') : 'Tanpa Tenggat Waktu'}
                   </div>
                   <div className="text-emerald-400/80 font-black sm:text-right">
-                    Rp{(goal.targetAmount - goal.currentAmount).toLocaleString()} lagi untuk mencapai target
+                    Rp. {(goal.targetAmount - goal.currentAmount).toLocaleString()} lagi untuk mencapai target
                   </div>
                 </div>
               </div>
@@ -236,7 +236,7 @@ export default function GoalsPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Tanggal Target</label>
-                    <input type="date" name="deadline" defaultValue={editingGoal?.deadline ? format(editingGoal.deadline instanceof Timestamp ? editingGoal.deadline.toDate() : new Date(editingGoal.deadline), 'yyyy-MM-dd') : ''} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" />
+                    <input type="date" name="deadline" defaultValue={editingGoal?.deadline ? format(new Date(editingGoal.deadline), 'yyyy-MM-dd') : ''} disabled={isSaving} className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 px-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" />
                   </div>
                 </div>
                 <button 

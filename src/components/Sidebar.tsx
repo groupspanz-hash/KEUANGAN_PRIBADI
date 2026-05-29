@@ -7,7 +7,7 @@ import {
   HandCoins, 
   LogOut,
   Sparkles,
-  ChevronRight
+  Languages
 } from 'lucide-react';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
@@ -15,17 +15,17 @@ import { useStore } from '../store';
 import { motion } from 'motion/react';
 import { cn } from '../firebase/utils';
 
-const navItems = [
-  { name: 'Dasbor', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Transaksi', path: '/transactions', icon: ArrowLeftRight },
-  { name: 'Anggaran', path: '/budget', icon: PieChart },
-  { name: 'Target Tabungan', path: '/goals', icon: Target },
-  { name: 'Hutang & Pinjaman', path: '/debts', icon: HandCoins },
-];
-
 export default function Sidebar() {
   const location = useLocation();
-  const { user, clearData } = useStore();
+  const { user, clearData, language, setLanguage } = useStore();
+
+  const navItems = [
+    { name: language === 'id' ? 'Dasbor' : 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: language === 'id' ? 'Transaksi' : 'Transactions', path: '/transactions', icon: ArrowLeftRight },
+    { name: language === 'id' ? 'Anggaran' : 'Budgets', path: '/budget', icon: PieChart },
+    { name: language === 'id' ? 'Target Tabungan' : 'Savings Goals', path: '/goals', icon: Target },
+    { name: language === 'id' ? 'Hutang & Pinjaman' : 'Debts & Loans', path: '/debts', icon: HandCoins },
+  ];
 
   const handleLogout = async () => {
     try {
@@ -69,6 +69,23 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-3 mt-auto border-t border-slate-900 bg-[#0F1218]/90">
+        
+        {/* Language Toggle */}
+        <div className="bg-slate-900/60 rounded-xl p-2 mb-2.5 flex overflow-hidden border border-white/5">
+          <button 
+            className={cn("flex-1 text-xs font-black py-1.5 transition-all text-center uppercase tracking-wider rounded-lg", language === 'id' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
+            onClick={() => setLanguage('id')}
+          >
+            ID
+          </button>
+          <button 
+            className={cn("flex-1 text-xs font-black py-1.5 transition-all text-center uppercase tracking-wider rounded-lg", language === 'en' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300')}
+            onClick={() => setLanguage('en')}
+          >
+            EN
+          </button>
+        </div>
+
         {/* Compact Wawasan AI */}
         <div className="bg-emerald-950/20 rounded-xl p-3 mb-2.5 border border-emerald-500/10">
           <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em] mb-1 px-0.5">Wawasan AI</p>

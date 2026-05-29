@@ -97,7 +97,7 @@ export default function DashboardPage() {
     .slice(0, 7)
     .reverse()
     .map(tx => ({
-      name: format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'MMM dd'),
+      name: format(new Date(tx.date), 'MMM dd'),
       amount: tx.amount,
       type: tx.type
     }));
@@ -115,7 +115,7 @@ export default function DashboardPage() {
     const value = transactions
       .filter(tx => {
         if (tx.type !== 'expense' || tx.category !== cat) return false;
-        const txDate = tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date);
+        const txDate = new Date(tx.date);
         return isWithinInterval(txDate, { start: startOfMonth(new Date()), end: endOfMonth(new Date()) });
       })
       .reduce((acc, tx) => acc + tx.amount, 0);
@@ -159,7 +159,7 @@ export default function DashboardPage() {
           >
             <p className="text-slate-400 text-xs md:text-sm font-medium">{stat.label}</p>
             <h3 className={cn("text-lg sm:text-2xl font-black mt-1 truncate", stat.color)}>
-              Rp{stat.value.toLocaleString()}
+              Rp. {stat.value.toLocaleString()}
             </h3>
             {idx === 0 && <p className="text-emerald-500 text-[10px] font-bold mt-1.5">+4.5% dari bulan lalu</p>}
             {idx > 0 && (
@@ -305,7 +305,7 @@ export default function DashboardPage() {
           
           <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 flex items-center justify-between mb-6">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Pengeluaran</span>
-            <span className="text-lg font-black text-rose-400">Rp{stats.expense.toLocaleString()}</span>
+            <span className="text-lg font-black text-rose-400">Rp. {stats.expense.toLocaleString()}</span>
           </div>
 
           <div className="flex-grow overflow-y-auto pr-1 custom-scrollbar space-y-4">
@@ -320,7 +320,7 @@ export default function DashboardPage() {
                       <span className="text-white font-bold">{item.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-slate-400 font-medium font-mono text-[11px]">Rp{item.value.toLocaleString()}</span>
+                      <span className="text-slate-400 font-medium font-mono text-[11px]">Rp. {item.value.toLocaleString()}</span>
                       <span className="font-extrabold text-[11px]" style={{ color }}>{Math.round(percentage)}%</span>
                     </div>
                   </div>
@@ -362,14 +362,14 @@ export default function DashboardPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="font-bold text-xs text-white truncate leading-tight">{tx.description}</h4>
-                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-wider mt-0.5 truncate">{tx.category} • {format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'MMM dd')}</p>
+                    <p className="text-[9px] text-slate-500 uppercase font-black tracking-wider mt-0.5 truncate">{tx.category} • {format(new Date(tx.date), 'MMM dd')}</p>
                   </div>
                 </div>
                 <p className={cn(
                   "text-sm sm:text-md font-black tracking-tight shrink-0 pl-2",
                   tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                 )}>
-                  {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString()}
+                  {tx.type === 'income' ? '+' : '-'}Rp. {tx.amount.toLocaleString()}
                 </p>
               </div>
             ))}

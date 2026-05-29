@@ -71,6 +71,9 @@ export default function TransactionsPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -259,7 +262,7 @@ export default function TransactionsPage() {
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
           }).catch(console.error);
-          toast.success(`Hutang berkurang sebesar Rp${data.amount.toLocaleString()}. Sisa: Rp${newAmount.toLocaleString()}`);
+          toast.success(`Hutang berkurang sebesar Rp. ${data.amount.toLocaleString()}. Sisa: Rp. ${newAmount.toLocaleString()}`);
         }
       }
 
@@ -307,7 +310,7 @@ export default function TransactionsPage() {
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
               }));
-              toast.success(`Saldo Hutang dikembalikan sebesar Rp${tx.amount.toLocaleString()}`);
+              toast.success(`Saldo Hutang dikembalikan sebesar Rp. ${tx.amount.toLocaleString()}`);
             }
           } catch (e) {
             console.error("Failed to restore debt balance on deletion:", e);
@@ -344,53 +347,117 @@ export default function TransactionsPage() {
     const matchesSearch = tx.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           tx.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || tx.type === filterType;
-    return matchesSearch && matchesType;
+    let matchesDate = true;
+    const txDate = new Date(tx.date).getTime();
+    if (startDate) {
+      matchesDate = matchesDate && txDate >= new Date(startDate + 'T00:00:00').getTime();
+    }
+    if (endDate) {
+      matchesDate = matchesDate && txDate <= new Date(endDate + 'T23:59:59').getTime();
+    }
+    return matchesSearch && matchesType && matchesDate;
   });
+
+  const { language } = useStore();
+  
+  const translations = {
+    id: {
+      title: 'Transaksi',
+      subtitle: 'Jaga buku besar Anda tetap bersih dan aman.',
+      addBtn: 'Tambah Transaksi',
+      search: 'Cari transaksi...',
+      all: 'semua',
+      income: 'pendapatan',
+      expense: 'pengeluaran',
+      recent: 'Transaksi Terbaru',
+    },
+    en: {
+      title: 'Transactions',
+      subtitle: 'Keep your ledgers clean and secure.',
+      addBtn: 'Add Transaction',
+      search: 'Search transactions...',
+      all: 'all',
+      income: 'income',
+      expense: 'expense',
+      recent: 'Recent Transactions',
+    }
+  };
+  
+  const t = translations[language];
 
   return (
     <div className="space-y-8 pb-20">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Transaksi</h1>
-          <p className="text-slate-400 font-medium">Jaga buku besar Anda tetap bersih dan aman.</p>
+          <h1 className="text-4xl font-black tracking-tight text-white">{t.title}</h1>
+          <p className="text-slate-400 font-medium">{t.subtitle}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
         >
           <Plus className="w-6 h-6" />
-          Tambah Transaksi
+          {t.addBtn}
         </button>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center">
-        <div className="relative flex-1 group w-full">
+      <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
+        <div className="relative flex-1 group w-full lg:w-auto min-w-[200px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
           <input
             type="text"
-            placeholder="Cari berdasarkan deskripsi atau kategori..."
+            placeholder={t.search}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-all font-medium text-white"
           />
         </div>
-        <div className="flex gap-2 w-full lg:w-auto">
-          {['semua', 'pendapatan', 'pengeluaran'].map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type === 'semua' ? 'all' : type === 'pendapatan' ? 'income' : 'expense')}
-              className={cn(
-                "flex-1 lg:flex-none px-6 py-4 rounded-2xl font-bold text-sm capitalize transition-all border",
-                (filterType === 'all' && type === 'semua') || (filterType === 'income' && type === 'pendapatan') || (filterType === 'expense' && type === 'pengeluaran')
-                  ? "bg-emerald-500 text-white border-transparent shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
-                  : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
-              )}
-            >
-              {type}
-            </button>
-          ))}
+
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-900 border border-slate-800 rounded-2xl p-2 px-3 grow sm:grow-0">
+            <input 
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent text-white text-sm focus:outline-none max-w-[120px]"
+              title="Tanggal Mulai"
+            />
+            <span className="text-slate-500 font-bold">-</span>
+            <input 
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent text-white text-sm focus:outline-none max-w-[120px]"
+              title="Tanggal Akhir"
+            />
+            {(startDate || endDate) && (
+              <button 
+                onClick={() => { setStartDate(''); setEndDate(''); }} 
+                className="ml-2 px-2 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors scale-90"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          
+          <div className="flex gap-2 w-full sm:w-auto">
+            {[t.all, t.income, t.expense].map((type, idx) => (
+              <button
+                key={type}
+                onClick={() => setFilterType(idx === 0 ? 'all' : idx === 1 ? 'income' : 'expense')}
+                className={cn(
+                  "flex-1 lg:flex-none px-4 lg:px-6 py-4 rounded-2xl font-bold text-sm capitalize transition-all border",
+                  (filterType === 'all' && idx === 0) || (filterType === 'income' && idx === 1) || (filterType === 'expense' && idx === 2)
+                    ? "bg-emerald-500 text-white border-transparent shadow-[0_0_15px_rgba(16,185,129,0.2)]" 
+                    : "bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600"
+                )}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -442,7 +509,7 @@ export default function TransactionsPage() {
                     "text-2xl font-black tracking-tighter",
                     tx.type === 'income' ? "text-emerald-400" : "text-rose-400"
                   )}>
-                    {tx.type === 'income' ? '+' : '-'}Rp{tx.amount.toLocaleString()}
+                    {tx.type === 'income' ? '+' : '-'}Rp. {tx.amount.toLocaleString()}
                   </p>
                   <div className="flex items-center gap-2">
                     <button 
@@ -604,7 +671,7 @@ export default function TransactionsPage() {
                         <option value="" className="bg-slate-900 text-white">-- Pilih Akun Hutang --</option>
                         {debts.filter(d => d.status === 'unpaid' || d.id === editingTransaction?.debtId).map(debt => (
                           <option key={debt.id} value={debt.id} className="bg-slate-900 text-white">
-                             {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: Rp{debt.amount.toLocaleString()})
+                             {debt.name} ({debt.type === 'debt' ? 'Hutang Anda' : 'Pinjaman'} - Sisa: Rp. {debt.amount.toLocaleString()})
                           </option>
                         ))}
                       </select>
