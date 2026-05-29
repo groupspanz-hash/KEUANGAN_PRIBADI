@@ -1,13 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  orderBy, 
-  limit,
-  Timestamp
-} from 'firebase/firestore';
+  ref, 
+  onValue
+} from 'firebase/database';
 import { db } from '../firebase/config';
 import { useStore } from '../store';
 import { 
@@ -39,7 +34,7 @@ import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { getAIInsights } from '../services/aiService';
 import { Transaction, EXPENSE_CATEGORIES } from '../types';
-import { cn, OperationType, handleFirestoreError } from '../firebase/utils';
+import { cn, OperationType, handleDatabaseError } from '../firebase/utils';
 
 export default function DashboardPage() {
   const { user, transactions, setTransactions, insights, setInsights } = useStore();
@@ -48,27 +43,25 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const txs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Transaction[];
-      
-      // Sort manually to avoid needing a Firestore composite index
-      txs.sort((a: any, b: any) => {
-        const dateA = a.date && typeof a.date.toMillis === 'function' ? a.date.toMillis() : (new Date(a.date as any).getTime() || 0);
-        const dateB = b.date && typeof b.date.toMillis === 'function' ? b.date.toMillis() : (new Date(b.date as any).getTime() || 0);
-        return dateB - dateA;
-      });
-      
-      setTransactions(txs);
+    const tRef = ref(db, `transactions/${user.uid}`);
+    const unsubscribe = onValue(tRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const txs = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Transaction[];
+        
+        // Sort manually
+        txs.sort((a: any, b: any) => {
+          const dateA = new Date(a.date).getTime() || 0;
+          const dateB = new Date(b.date).getTime() || 0;
+          return dateB - dateA;
+        });
+        
+        setTransactions(txs);
+      } else {
+        setTransactions([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'transactions', false);
+      handleDatabaseError(error, OperationType.LIST, 'transactions', false);
     });
 
     return () => unsubscribe();
@@ -77,10 +70,10 @@ export default function DashboardPage() {
   const stats = {
     balance: transactions.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
     income: transactions
-      .filter(tx => tx.type === 'income' && isWithinInterval(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) }))
+      .filter(tx => tx.type === 'income' && isWithinInterval(new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) }))
       .reduce((acc, tx) => acc + tx.amount, 0),
     expense: transactions
-      .filter(tx => tx.type === 'expense' && isWithinInterval(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) }))
+      .filter(tx => tx.type === 'expense' && isWithinInterval(new Date(tx.date), { start: startOfMonth(new Date()), end: endOfMonth(new Date()) }))
       .reduce((acc, tx) => acc + tx.amount, 0),
   };
 

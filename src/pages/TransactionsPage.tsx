@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
+import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDoc,
-  getDocFromCache,
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot,
-  Timestamp,
+  ref, 
+  onValue, 
+  push, 
+  set, 
+  remove, 
+  get,
   serverTimestamp
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+} from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
 import { useStore } from '../store';
 import { 
@@ -115,12 +109,17 @@ export default function TransactionsPage() {
   // Load debts to connect with 'Pembayaran Hutang' category
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'debts'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      setDebts(dSet);
+    const dRef = ref(db, `debts/${user.uid}`);
+    const unsubscribe = onValue(dRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const dSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as any[];
+        setDebts(dSet);
+      } else {
+        setDebts([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'debts', false);
+      handleDatabaseError(error, OperationType.LIST, 'debts', false);
     });
     return () => unsubscribe();
   }, [user, setDebts]);
@@ -128,27 +127,25 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', user.uid)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const txs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Transaction[];
-      
-      // Sort manually to avoid needing a Firestore composite index
-      txs.sort((a: any, b: any) => {
-        const dateA = a.date && typeof a.date.toMillis === 'function' ? a.date.toMillis() : (new Date(a.date as any).getTime() || 0);
-        const dateB = b.date && typeof b.date.toMillis === 'function' ? b.date.toMillis() : (new Date(b.date as any).getTime() || 0);
-        return dateB - dateA;
-      });
-      
-      setTransactions(txs);
+    const tRef = ref(db, `transactions/${user.uid}`);
+    const unsubscribe = onValue(tRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const txs = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Transaction[];
+        
+        // Sort manually
+        txs.sort((a: any, b: any) => {
+          const dateA = new Date(a.date).getTime() || 0;
+          const dateB = new Date(b.date).getTime() || 0;
+          return dateB - dateA;
+        });
+        
+        setTransactions(txs);
+      } else {
+        setTransactions([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'transactions', false);
+      handleDatabaseError(error, OperationType.LIST, 'transactions', false);
     });
 
     return () => unsubscribe();
@@ -180,7 +177,7 @@ export default function TransactionsPage() {
       if (currentReceiptFile) {
         setIsUploading(true);
         try {
-          const fileRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${currentReceiptFile.name}`);
+          const fileRef = storageRef(storage, `receipts/${user.uid}/${Date.now()}_${currentReceiptFile.name}`);
           const snapshot = await withTimeout(uploadBytes(fileRef, currentReceiptFile), 15000, 'Gagal mengunggah gambar. Waktu terlampaui.');
           receiptUrl = await getDownloadURL(snapshot.ref);
         } catch (error) {
@@ -200,7 +197,7 @@ export default function TransactionsPage() {
         category: data.category,
         paymentMethod: data.paymentMethod,
         description: data.description,
-        date: Timestamp.fromDate(finalDate),
+        date: finalDate.getTime(),
         receiptUrl,
         debtId: data.category === 'Pembayaran Hutang' ? (data.debtId || '') : '',
         updatedAt: serverTimestamp(),
@@ -217,12 +214,13 @@ export default function TransactionsPage() {
       // 1. Revert previous debt association if editing an existing transaction
       if (currentEditingTx?.id && currentEditingTx.category === 'Pembayaran Hutang' && currentEditingTx.debtId) {
         try {
-          const oldDebtRef = doc(db, 'debts', currentEditingTx.debtId);
-          const oldDebtSnap = await getDocFromCache(oldDebtRef).catch(() => null);
-          if (oldDebtSnap && oldDebtSnap.exists()) {
-            const oldDebtData = oldDebtSnap.data();
+          const oldDebtRef = ref(db, `debts/${user.uid}/${currentEditingTx.debtId}`);
+          const oldDebtSnap = await get(oldDebtRef);
+          if (oldDebtSnap.exists()) {
+            const oldDebtData = oldDebtSnap.val();
             const revertedAmount = (oldDebtData.amount || 0) + currentEditingTx.amount;
-            updateDoc(oldDebtRef, {
+            set(oldDebtRef, {
+              ...oldDebtData,
               amount: revertedAmount,
               status: revertedAmount > 0 ? 'unpaid' : 'paid',
               updatedAt: serverTimestamp()
@@ -235,13 +233,15 @@ export default function TransactionsPage() {
 
       // 2. Save / Update Transaction
       if (currentEditingTx?.id) {
-        updateDoc(doc(db, 'transactions', currentEditingTx.id), txData).catch(e => {
+        set(ref(db, `transactions/${user.uid}/${currentEditingTx.id}`), { ...currentEditingTx, ...txData }).catch(e => {
           console.error('Update failed', e);
         });
         toast.success('Transaksi diperbarui');
       } else {
-        addDoc(collection(db, 'transactions'), {
+        const newRef = push(ref(db, `transactions/${user.uid}`));
+        set(newRef, {
           ...txData,
+          id: newRef.key,
           createdAt: serverTimestamp(),
         }).catch(e => console.error('Add failed', e));
         toast.success('Transaksi ditambahkan');
@@ -249,11 +249,12 @@ export default function TransactionsPage() {
 
       // 3. Set/apply new debt payment logic if category is 'Pembayaran Hutang' and debtId is chosen
       if (data.category === 'Pembayaran Hutang' && data.debtId) {
-        const debtRef = doc(db, 'debts', data.debtId);
+        const debtRef = ref(db, `debts/${user.uid}/${data.debtId}`);
         const debtToUpdate = debts.find((d: any) => d.id === data.debtId);
         if (debtToUpdate) {
           const newAmount = Math.max(0, (debtToUpdate.amount || 0) - data.amount);
-          updateDoc(debtRef, {
+          set(debtRef, {
+            ...debtToUpdate,
             amount: newAmount,
             status: newAmount <= 0 ? 'paid' : 'unpaid',
             updatedAt: serverTimestamp()
@@ -280,7 +281,7 @@ export default function TransactionsPage() {
     setValue('category', tx.category);
     setValue('paymentMethod', tx.paymentMethod);
     setValue('description', tx.description);
-    setValue('date', format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'yyyy-MM-dd'));
+    setValue('date', format(new Date(tx.date), 'yyyy-MM-dd'));
     if (tx.debtId) {
       setValue('debtId', tx.debtId);
     } else {
@@ -290,17 +291,18 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (tx: Transaction) => {
-    if (!tx.id) return;
+    if (!tx.id || !user?.uid) return;
     try {
       // Revert debt reduction if applicable
         if (tx.category === 'Pembayaran Hutang' && tx.debtId) {
           try {
-            const debtRef = doc(db, 'debts', tx.debtId);
-            const debtSnap = await getDocFromCache(debtRef).catch(() => null);
-            if (debtSnap && debtSnap.exists()) {
-              const debtData = debtSnap.data();
+            const debtRef = ref(db, `debts/${user.uid}/${tx.debtId}`);
+            const debtSnap = await get(debtRef);
+            if (debtSnap.exists()) {
+              const debtData = debtSnap.val();
               const revertedAmount = (debtData.amount || 0) + tx.amount;
-              await withTimeout(updateDoc(debtRef, {
+              await withTimeout(set(debtRef, {
+                ...debtData,
                 amount: revertedAmount,
                 status: revertedAmount > 0 ? 'unpaid' : 'paid',
                 updatedAt: serverTimestamp()
@@ -312,7 +314,7 @@ export default function TransactionsPage() {
           }
         }
 
-        await withTimeout(deleteDoc(doc(db, 'transactions', tx.id)));
+        await withTimeout(remove(ref(db, `transactions/${user.uid}/${tx.id}`)));
         toast.success('Transaksi dihapus');
       } catch (error) {
         toast.error('Hapus gagal');
@@ -430,7 +432,7 @@ export default function TransactionsPage() {
                   </div>
                   <div className="flex flex-wrap justify-center md:justify-start gap-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> {tx.category}</span>
-                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'MMM dd, yyyy')}</span>
+                    <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {format(new Date(tx.date), 'MMM dd, yyyy')}</span>
                     <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> {tx.paymentMethod}</span>
                   </div>
                 </div>

@@ -1,11 +1,11 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import React, { useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, getDocFromServer } from 'firebase/firestore';
+import { ref, get, set, serverTimestamp } from 'firebase/database';
 import { auth, db } from './firebase/config';
 import { useStore } from './store';
 import { Toaster } from 'react-hot-toast';
-import { handleFirestoreError, OperationType } from './firebase/utils';
+import { handleDatabaseError, OperationType } from './firebase/utils';
 
 // Pages (will create these)
 import LandingPage from './pages/LandingPage';
@@ -52,11 +52,11 @@ export default function App() {
           // Fetch or create user doc in background - DO NOT AWAIT
           const syncUser = async () => {
             try {
-              const userDocRef = doc(db, 'users', firebaseUser.uid);
-              const userDoc = await getDoc(userDocRef);
+              const userDocRef = ref(db, `users/${firebaseUser.uid}`);
+              const userSnapshot = await get(userDocRef);
               
-              if (userDoc.exists()) {
-                setUser(userDoc.data() as any);
+              if (userSnapshot.exists()) {
+                setUser(userSnapshot.val() as any);
               } else {
                 const userData = {
                   uid: firebaseUser.uid,
@@ -65,11 +65,11 @@ export default function App() {
                   photoURL: firebaseUser.photoURL || '',
                   createdAt: serverTimestamp(),
                 };
-                await setDoc(userDocRef, userData);
-                setUser({ ...userData, createdAt: new Date() } as any);
+                await set(userDocRef, userData);
+                setUser({ ...userData, createdAt: Date.now() } as any);
               }
             } catch (error: any) {
-              console.warn("Firestore background sync failed (Offline):", error.message);
+              console.warn("Database background sync failed (Offline):", error.message);
             }
           };
           syncUser();

@@ -1,5 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
-
 export type TransactionType = 'income' | 'expense';
 
 export interface User {
@@ -7,8 +5,8 @@ export interface User {
   email: string;
   displayName: string | null;
   photoURL: string | null;
-  createdAt: Timestamp | Date;
-  updatedAt?: Timestamp | Date;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Transaction {
@@ -19,10 +17,11 @@ export interface Transaction {
   category: string;
   paymentMethod: string;
   description: string;
-  date: Timestamp | Date;
+  date: number; // Storing as milliseconds for sorting capability
   receiptUrl?: string;
   debtId?: string;
-  createdAt: Timestamp | Date;
+  createdAt: number;
+  updatedAt?: number;
   isRecurring?: boolean;
   recurringInterval?: 'monthly' | 'weekly' | 'yearly';
 }
@@ -33,7 +32,8 @@ export interface Budget {
   category: string;
   amount: number;
   month: string; // YYYY-MM
-  createdAt: Timestamp | Date;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Goal {
@@ -42,8 +42,9 @@ export interface Goal {
   name: string;
   targetAmount: number;
   currentAmount: number;
-  deadline?: Timestamp | Date;
-  createdAt: Timestamp | Date;
+  deadline?: number;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface Debt {
@@ -51,10 +52,11 @@ export interface Debt {
   userId: string;
   name: string;
   amount: number;
-  dueDate?: Timestamp | Date;
+  dueDate?: number;
   type: 'debt' | 'loan';
   status: 'unpaid' | 'paid';
-  createdAt: Timestamp | Date;
+  createdAt: number;
+  updatedAt?: number;
 }
 
 export interface AIInsight {
@@ -63,7 +65,7 @@ export interface AIInsight {
   title: string;
   content: string;
   type: 'warning' | 'tip' | 'positive';
-  createdAt: Timestamp | Date;
+  createdAt: number;
 }
 
 export const INCOME_CATEGORIES = [

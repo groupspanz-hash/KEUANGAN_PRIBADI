@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  createUserWithEmailAndPassword, 
   signInWithPopup, 
-  GoogleAuthProvider,
-  updateProfile
+  GoogleAuthProvider
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
+import { auth } from '../firebase/config';
 import { useStore } from '../store';
 import { motion } from 'motion/react';
-import { Sparkles, Mail, Lock, User, UserPlus, Chrome, LayoutDashboard, ArrowRight } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { handleFirestoreError, OperationType } from '../firebase/utils';
 
 export default function RegisterPage() {
   const { user } = useStore();

@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot,
-  Timestamp,
+  ref, 
+  onValue, 
+  push, 
+  set, 
+  remove, 
   serverTimestamp
-} from 'firebase/firestore';
+} from 'firebase/database';
 import { db } from '../firebase/config';
 import { useStore } from '../store';
 import { 
@@ -30,7 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Budget, EXPENSE_CATEGORIES } from '../types';
-import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
+import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
 
 export default function BudgetPage() {
   const { user, budgets, setBudgets, transactions } = useStore();
@@ -41,15 +37,21 @@ export default function BudgetPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'budgets'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const bSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Budget[];
-      setBudgets(bSet);
+    const bRef = ref(db, `budgets/${user.uid}`);
+    const unsubscribe = onValue(bRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const bSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Budget[];
+        setBudgets(bSet);
+      } else {
+        setBudgets([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'budgets', false);
+      handleDatabaseError(error, OperationType.LIST, 'budgets', false);
     });
+    // return () => unsubscribe(); OnValue returns unsubscribe directly
     return () => unsubscribe();
-  }, [user, selectedMonth, setBudgets]);
+  }, [user, setBudgets]);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -67,16 +69,20 @@ export default function BudgetPage() {
       };
 
       const isEditing = !!editingBudget?.id;
-      const budgetPromise = isEditing
-        ? updateDoc(doc(db, 'budgets', editingBudget!.id), budgetData)
-        : addDoc(collection(db, 'budgets'), { ...budgetData, createdAt: serverTimestamp() });
+      let budgetPromise;
+      if (isEditing) {
+        budgetPromise = set(ref(db, `budgets/${user?.uid}/${editingBudget!.id}`), { ...editingBudget, ...budgetData });
+      } else {
+        const newRef = push(ref(db, `budgets/${user?.uid}`));
+        budgetPromise = set(newRef, { ...budgetData, createdAt: serverTimestamp(), id: newRef.key });
+      }
 
       setEditingBudget(null); // Clear state
 
       await withTimeout(budgetPromise);
       toast.success(isEditing ? 'Anggaran diperbarui' : 'Anggaran ditetapkan');
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'budgets');
+      handleDatabaseError(error, OperationType.WRITE, 'budgets');
     } finally {
       setIsSaving(false);
     }
@@ -87,7 +93,7 @@ export default function BudgetPage() {
       .filter(tx => 
         tx.type === 'expense' && 
         tx.category === category && 
-        format(tx.date instanceof Timestamp ? tx.date.toDate() : new Date(tx.date), 'yyyy-MM') === selectedMonth
+        format(new Date(tx.date), 'yyyy-MM') === selectedMonth
       )
       .reduce((acc, tx) => acc + tx.amount, 0);
   };
@@ -146,11 +152,12 @@ export default function BudgetPage() {
                   </button>
                   <button 
                     onClick={async () => {
+                      if (!budget.id || !user?.uid) return;
                       try {
-                        await withTimeout(deleteDoc(doc(db, 'budgets', budget.id)));
+                        await withTimeout(remove(ref(db, `budgets/${user.uid}/${budget.id}`)));
                         toast.success('Anggaran dihapus');
                       } catch (error) {
-                        handleFirestoreError(error, OperationType.DELETE, 'budgets');
+                        handleDatabaseError(error, OperationType.DELETE, 'budgets');
                       }
                     }}
                     title="Hapus Anggaran"

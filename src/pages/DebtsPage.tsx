@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot,
-  Timestamp,
+  ref, 
+  onValue, 
+  push, 
+  set, 
+  remove, 
   serverTimestamp
-} from 'firebase/firestore';
+} from 'firebase/database';
 import { db } from '../firebase/config';
 import { useStore } from '../store';
 import { 
@@ -28,7 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Debt } from '../types';
-import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
+import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
 
 export default function DebtsPage() {
   const { user, debts, setDebts } = useStore();
@@ -38,12 +34,17 @@ export default function DebtsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'debts'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const dSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Debt[];
-      setDebts(dSet);
+    const dRef = ref(db, `debts/${user.uid}`);
+    const unsubscribe = onValue(dRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const dSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Debt[];
+        setDebts(dSet);
+      } else {
+        setDebts([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'debts');
+      handleDatabaseError(error, OperationType.LIST, 'debts');
     });
     return () => unsubscribe();
   }, [user, setDebts]);
@@ -57,7 +58,7 @@ export default function DebtsPage() {
     try {
       const formData = new FormData(e.currentTarget);
       const dueDateVal = formData.get('dueDate') as string;
-      const dueDate = (dueDateVal && dueDateVal.trim() !== '') ? Timestamp.fromDate(new Date(dueDateVal + 'T00:00:00')) : null;
+      const dueDate = (dueDateVal && dueDateVal.trim() !== '') ? new Date(dueDateVal + 'T00:00:00').getTime() : null;
 
       const debtData = {
         userId: user.uid,
@@ -70,16 +71,20 @@ export default function DebtsPage() {
       };
 
       const isEditing = !!editingDebt?.id;
-      const debtPromise = isEditing
-        ? updateDoc(doc(db, 'debts', editingDebt!.id), debtData)
-        : addDoc(collection(db, 'debts'), { ...debtData, createdAt: serverTimestamp() });
+      let debtPromise;
+      if (isEditing) {
+        debtPromise = set(ref(db, `debts/${user.uid}/${editingDebt!.id}`), { ...editingDebt, ...debtData });
+      } else {
+        const newRef = push(ref(db, `debts/${user.uid}`));
+        debtPromise = set(newRef, { ...debtData, createdAt: serverTimestamp(), id: newRef.key });
+      }
         
       setEditingDebt(null); // Clear state
 
       await withTimeout(debtPromise);
       toast.success(isEditing ? 'Informasi diperbarui' : 'Hutang/Pinjaman dicatat');
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'debts', false);
+      handleDatabaseError(error, OperationType.WRITE, 'debts', false);
       toast.error('Gagal menyimpan catatan hutang/pinjaman. Silakan coba lagi.');
     } finally {
       setIsSaving(false);
@@ -87,16 +92,14 @@ export default function DebtsPage() {
   };
 
   const toggleStatus = async (debt: Debt) => {
-    if (!debt.id) return;
+    if (!debt.id || !user?.uid) return;
     const newStatus = debt.status === 'paid' ? 'unpaid' : 'paid';
     try {
-      await withTimeout(updateDoc(doc(db, 'debts', debt.id), { 
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      }));
+      await withTimeout(set(ref(db, `debts/${user.uid}/${debt.id}/status`), newStatus));
+      await withTimeout(set(ref(db, `debts/${user.uid}/${debt.id}/updatedAt`), serverTimestamp()));
       toast.success(`Ditandai sebagai ${newStatus === 'paid' ? 'sudah dibayar' : 'belum dibayar'}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'debts');
+      handleDatabaseError(error, OperationType.UPDATE, 'debts');
     }
   };
 
@@ -154,7 +157,7 @@ export default function DebtsPage() {
               <p className="text-4xl font-black tracking-tighter text-white">Rp{debt.amount.toLocaleString()}</p>
               <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 <Calendar className="w-4 h-4" />
-                Jatuh Tempo: {debt.dueDate ? format(debt.dueDate instanceof Timestamp ? debt.dueDate.toDate() : new Date(debt.dueDate), 'MMM dd, yyyy') : 'Tanpa tanggal jatuh tempo'}
+                Jatuh Tempo: {debt.dueDate ? format(new Date(debt.dueDate), 'MMM dd, yyyy') : 'Tanpa tanggal jatuh tempo'}
               </div>
             </div>
 
@@ -166,7 +169,7 @@ export default function DebtsPage() {
                 Ubah
               </button>
               <button 
-                onClick={async () => { if(debt.id) { try { await withTimeout(deleteDoc(doc(db, 'debts', debt.id))); toast.success('Dihapus'); } catch(error) { handleFirestoreError(error, OperationType.DELETE, 'debts'); } } }}
+                onClick={async () => { if(debt.id && user?.uid) { try { await withTimeout(remove(ref(db, `debts/${user.uid}/${debt.id}`))); toast.success('Dihapus'); } catch(error) { handleDatabaseError(error, OperationType.DELETE, 'debts'); } } }}
                 className="px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl transition-colors"
               >
                 <X className="w-4 h-4" />

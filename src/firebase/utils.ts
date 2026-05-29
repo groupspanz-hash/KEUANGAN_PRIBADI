@@ -9,7 +9,7 @@ export enum OperationType {
   WRITE = 'write',
 }
 
-export interface FirestoreErrorInfo {
+export interface DatabaseErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
@@ -26,15 +26,15 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null, shouldThrow: boolean = true) {
+export function handleDatabaseError(error: unknown, operationType: OperationType, path: string | null, shouldThrow: boolean = true) {
   let errorMessage = error instanceof Error ? error.message : String(error);
   
-  if (errorMessage.includes('Failed to get document because the client is offline') || errorMessage.includes('offline')) {
-    errorMessage = 'Koneksi ke database lambat atau offline. Beberapa data mungkin tidak muncul atau tertunda.';
-    console.warn("Firestore Offline:", errorMessage);
+  if (errorMessage.includes('Failed to get document because the client is offline') || errorMessage.includes('offline') || errorMessage.includes('permission_denied')) {
+    errorMessage = 'Koneksi ke database lambat, offline, atau masalah izin. Beberapa data mungkin tidak muncul atau tertunda. ' + errorMessage;
+    console.warn("Database issue:", errorMessage);
   }
 
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo: DatabaseErrorInfo = {
     error: errorMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
@@ -51,7 +51,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   
-  console.error('Firestore Error Details: ', JSON.stringify(errInfo));
+  console.error('Database Error Details: ', JSON.stringify(errInfo));
   
   if (shouldThrow) {
     throw new Error(JSON.stringify(errInfo));

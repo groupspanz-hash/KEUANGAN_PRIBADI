@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot,
-  Timestamp,
+  ref, 
+  onValue, 
+  push, 
+  set, 
+  remove, 
   serverTimestamp
-} from 'firebase/firestore';
+} from 'firebase/database';
 import { db } from '../firebase/config';
 import { useStore } from '../store';
 import { 
@@ -32,7 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { Goal } from '../types';
-import { cn, OperationType, handleFirestoreError, withTimeout } from '../firebase/utils';
+import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
 
 export default function GoalsPage() {
   const { user, goals, setGoals } = useStore();
@@ -42,12 +38,17 @@ export default function GoalsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, 'goals'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const gSet = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Goal[];
-      setGoals(gSet);
+    const gRef = ref(db, `goals/${user.uid}`);
+    const unsubscribe = onValue(gRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const gSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Goal[];
+        setGoals(gSet);
+      } else {
+        setGoals([]);
+      }
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'goals');
+      handleDatabaseError(error, OperationType.LIST, 'goals');
     });
     return () => unsubscribe();
   }, [user, setGoals]);
@@ -64,21 +65,25 @@ export default function GoalsPage() {
         name: formData.get('name') as string,
         targetAmount: Number(formData.get('targetAmount')),
         currentAmount: Number(formData.get('currentAmount')),
-        deadline: formData.get('deadline') ? Timestamp.fromDate(new Date(formData.get('deadline') as string)) : null,
+        deadline: formData.get('deadline') ? new Date(formData.get('deadline') as string).getTime() : null,
         updatedAt: serverTimestamp(),
       };
 
       const isEditing = !!editingGoal?.id;
-      const goalPromise = isEditing
-        ? updateDoc(doc(db, 'goals', editingGoal!.id), goalData)
-        : addDoc(collection(db, 'goals'), { ...goalData, createdAt: serverTimestamp() });
+      let goalPromise;
+      if (isEditing) {
+        goalPromise = set(ref(db, `goals/${user?.uid}/${editingGoal!.id}`), { ...editingGoal, ...goalData });
+      } else {
+        const newRef = push(ref(db, `goals/${user?.uid}`));
+        goalPromise = set(newRef, { ...goalData, createdAt: serverTimestamp(), id: newRef.key });
+      }
         
       setEditingGoal(null);
 
       await withTimeout(goalPromise);
       toast.success(isEditing ? 'Target diperbarui' : 'Target ditambahkan');
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'goals');
+      handleDatabaseError(error, OperationType.WRITE, 'goals');
     } finally {
       setIsSaving(false);
     }
@@ -142,12 +147,12 @@ export default function GoalsPage() {
                   </button>
                   <button 
                     onClick={async () => { 
-                      if(goal.id) { 
+                      if(goal.id && user?.uid) { 
                         try {
-                          await withTimeout(deleteDoc(doc(db, 'goals', goal.id)));
+                          await withTimeout(remove(ref(db, `goals/${user.uid}/${goal.id}`)));
                           toast.success('Target dihapus'); 
                         } catch (error) {
-                          handleFirestoreError(error, OperationType.DELETE, 'goals');
+                          handleDatabaseError(error, OperationType.DELETE, 'goals');
                         }
                       } 
                     }}
