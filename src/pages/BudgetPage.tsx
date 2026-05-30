@@ -1,20 +1,20 @@
-import { formatRupiah } from '../utils/currency';
-import React, { useState, useEffect } from 'react';
-import { 
-  ref, 
-  onValue, 
-  push, 
-  set, 
-  remove, 
-  serverTimestamp
-} from 'firebase/database';
-import { db } from '../firebase/config';
-import { useStore } from '../store';
-import { 
-  Plus, 
-  PieChart, 
-  Tag, 
-  DollarSign, 
+import { formatRupiah } from "../utils/currency";
+import React, { useState, useEffect } from "react";
+import {
+  ref,
+  onValue,
+  push,
+  set,
+  remove,
+  serverTimestamp,
+} from "firebase/database";
+import { db } from "../firebase/config";
+import { useStore } from "../store";
+import {
+  Plus,
+  PieChart,
+  Tag,
+  DollarSign,
   Calendar,
   X,
   AlertTriangle,
@@ -22,35 +22,49 @@ import {
   CheckCircle2,
   Trash2,
   Pencil,
-  Info
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { toast } from 'react-hot-toast';
-import { Budget, EXPENSE_CATEGORIES } from '../types';
-import { cn, OperationType, handleDatabaseError, withTimeout } from '../firebase/utils';
+  Info,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { toast } from "react-hot-toast";
+import { Budget, EXPENSE_CATEGORIES } from "../types";
+import {
+  cn,
+  OperationType,
+  handleDatabaseError,
+  withTimeout,
+} from "../firebase/utils";
 
 export default function BudgetPage() {
   const { user, budgets, setBudgets, transactions } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedMonth, setSelectedMonth] = useState(
+    format(new Date(), "yyyy-MM"),
+  );
 
   useEffect(() => {
     if (!user) return;
     const bRef = ref(db, `budgets/${user.uid}`);
-    const unsubscribe = onValue(bRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const bSet = Object.keys(data).map(key => ({ id: key, ...data[key] })) as Budget[];
-        setBudgets(bSet);
-      } else {
-        setBudgets([]);
-      }
-    }, (error) => {
-      handleDatabaseError(error, OperationType.LIST, 'budgets', false);
-    });
+    const unsubscribe = onValue(
+      bRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const bSet = Object.keys(data).map((key) => ({
+            id: key,
+            ...data[key],
+          })) as Budget[];
+          setBudgets(bSet);
+        } else {
+          setBudgets([]);
+        }
+      },
+      (error) => {
+        handleDatabaseError(error, OperationType.LIST, "budgets", false);
+      },
+    );
     // return () => unsubscribe(); OnValue returns unsubscribe directly
     return () => unsubscribe();
   }, [user, setBudgets]);
@@ -59,13 +73,13 @@ export default function BudgetPage() {
     e.preventDefault();
     setIsModalOpen(false); // Optimistic UI: close immediately
     setIsSaving(true);
-    
+
     try {
       const formData = new FormData(e.currentTarget);
       const budgetData = {
         userId: user?.uid,
-        category: formData.get('category') as string,
-        amount: Number(formData.get('amount')),
+        category: formData.get("category") as string,
+        amount: Number(formData.get("amount")),
         month: selectedMonth,
         updatedAt: serverTimestamp(),
       };
@@ -73,18 +87,25 @@ export default function BudgetPage() {
       const isEditing = !!editingBudget?.id;
       let budgetPromise;
       if (isEditing) {
-        budgetPromise = set(ref(db, `budgets/${user?.uid}/${editingBudget!.id}`), { ...editingBudget, ...budgetData });
+        budgetPromise = set(
+          ref(db, `budgets/${user?.uid}/${editingBudget!.id}`),
+          { ...editingBudget, ...budgetData },
+        );
       } else {
         const newRef = push(ref(db, `budgets/${user?.uid}`));
-        budgetPromise = set(newRef, { ...budgetData, createdAt: serverTimestamp(), id: newRef.key });
+        budgetPromise = set(newRef, {
+          ...budgetData,
+          createdAt: serverTimestamp(),
+          id: newRef.key,
+        });
       }
 
       setEditingBudget(null); // Clear state
 
       await withTimeout(budgetPromise);
-      toast.success(isEditing ? 'Anggaran diperbarui' : 'Anggaran ditetapkan');
+      toast.success(isEditing ? "Anggaran diperbarui" : "Anggaran ditetapkan");
     } catch (error) {
-      handleDatabaseError(error, OperationType.WRITE, 'budgets');
+      handleDatabaseError(error, OperationType.WRITE, "budgets");
     } finally {
       setIsSaving(false);
     }
@@ -92,56 +113,73 @@ export default function BudgetPage() {
 
   const calculateSpending = (category: string) => {
     return transactions
-      .filter(tx => 
-        tx.type === 'expense' && 
-        tx.category === category && 
-        format(new Date(tx.date), 'yyyy-MM') === selectedMonth
+      .filter(
+        (tx) =>
+          tx.type === "expense" &&
+          tx.category === category &&
+          format(new Date(tx.date), "yyyy-MM") === selectedMonth,
       )
       .reduce((acc, tx) => acc + tx.amount, 0);
   };
 
   const totalBudgetInMonth = budgets
-    .filter(b => b.month === selectedMonth)
+    .filter((b) => b.month === selectedMonth)
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const totalSpentInMonth = budgets
-    .filter(b => b.month === selectedMonth)
+    .filter((b) => b.month === selectedMonth)
     .reduce((acc, curr) => acc + calculateSpending(curr.category), 0);
 
   return (
     <div className="space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-white mb-2">Perencana Anggaran</h1>
-          <p className="text-slate-400 font-medium tracking-tight">Tetapkan batasan Anda. Bangun masa depan Anda.</p>
-          
-          <div className="mt-6 flex flex-wrap gap-8 items-center bg-black/20 p-5 rounded-2xl border border-white/5">
+          <h1 className="text-4xl font-semibold tracking-tight text-white mb-2">
+            Perencana Anggaran
+          </h1>
+          <p className="text-slate-400 font-medium tracking-tight">
+            Tetapkan batasan Anda. Bangun masa depan Anda.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-6 sm:gap-8 items-center bg-black/20 p-5 rounded-2xl border border-white/5">
             <div>
-              <p className="text-sm font-bold text-slate-500 mb-1">Total Anggaran</p>
-              <p className="text-2xl font-bold text-white tracking-tight">{formatRupiah(totalBudgetInMonth)}</p>
+              <p className="text-sm font-bold text-slate-500 mb-1">
+                Total Anggaran
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                {formatRupiah(totalBudgetInMonth)}
+              </p>
             </div>
             <div className="w-px h-10 bg-white/10 hidden sm:block"></div>
             <div>
-              <p className="text-sm font-bold text-slate-500 mb-1">Total Terpakai</p>
-              <p className="text-2xl font-bold text-emerald-400 tracking-tight">{formatRupiah(totalSpentInMonth)}</p>
+              <p className="text-sm font-bold text-slate-500 mb-1">
+                Total Terpakai
+              </p>
+              <p className="text-xl sm:text-2xl font-bold text-emerald-400 tracking-tight">
+                {formatRupiah(totalSpentInMonth)}
+              </p>
             </div>
             <div className="w-px h-10 bg-white/10 hidden sm:block"></div>
             <div>
-              <p className="text-sm font-bold text-slate-500 mb-1">Sisa Anggaran</p>
-              <p className={`text-2xl font-bold tracking-tight ${totalBudgetInMonth - totalSpentInMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <p className="text-sm font-bold text-slate-500 mb-1">
+                Sisa Anggaran
+              </p>
+              <p
+                className={`text-xl sm:text-2xl font-bold tracking-tight ${totalBudgetInMonth - totalSpentInMonth >= 0 ? "text-emerald-400" : "text-rose-400"}`}
+              >
                 {formatRupiah(totalBudgetInMonth - totalSpentInMonth)}
               </p>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <input 
-            type="month" 
+          <input
+            type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl px-6 py-4 font-bold focus:outline-none focus:border-emerald-500 transition-all text-white"
           />
-          <button 
+          <button
             onClick={() => setIsModalOpen(true)}
             className="px-6 py-4 bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.3)]"
           >
@@ -152,113 +190,139 @@ export default function BudgetPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {budgets.filter(b => b.month === selectedMonth).map((budget) => {
-          const spent = calculateSpending(budget.category);
-          const percent = Math.min((spent / budget.amount) * 100, 100);
-          const isOver = spent >= budget.amount;
-          const isNearlyOver = percent >= 80 && percent < 100;
-          const isHalf = percent >= 50 && percent < 80;
+        {budgets
+          .filter((b) => b.month === selectedMonth)
+          .map((budget) => {
+            const spent = calculateSpending(budget.category);
+            const percent = Math.min((spent / budget.amount) * 100, 100);
+            const isOver = spent >= budget.amount;
+            const isNearlyOver = percent >= 80 && percent < 100;
+            const isHalf = percent >= 50 && percent < 80;
 
-          return (
-            <motion.div
-              layout
-              key={budget.id}
-              className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-8 backdrop-blur-xl relative group overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
-                    <PieChart className="w-6 h-6" />
+            return (
+              <motion.div
+                layout
+                key={budget.id}
+                className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-3xl p-8 backdrop-blur-xl relative group overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                      <PieChart className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white">
+                      {budget.category}
+                    </h3>
                   </div>
-                  <h3 className="text-xl font-bold text-white">{budget.category}</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingBudget(budget);
+                        setIsModalOpen(true);
+                      }}
+                      title="Ubah Anggaran"
+                      className="p-2 hover:bg-slate-800 rounded-lg text-emerald-500 hover:text-emerald-400 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!budget.id || !user?.uid) return;
+                        try {
+                          await withTimeout(
+                            remove(ref(db, `budgets/${user.uid}/${budget.id}`)),
+                          );
+                          toast.success("Anggaran dihapus");
+                        } catch (error) {
+                          handleDatabaseError(
+                            error,
+                            OperationType.DELETE,
+                            "budgets",
+                          );
+                        }
+                      }}
+                      title="Hapus Anggaran"
+                      className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => { setEditingBudget(budget); setIsModalOpen(true); }}
-                    title="Ubah Anggaran"
-                    className="p-2 hover:bg-slate-800 rounded-lg text-emerald-500 hover:text-emerald-400 transition-colors"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={async () => {
-                      if (!budget.id || !user?.uid) return;
-                      try {
-                        await withTimeout(remove(ref(db, `budgets/${user.uid}/${budget.id}`)));
-                        toast.success('Anggaran dihapus');
-                      } catch (error) {
-                        handleDatabaseError(error, OperationType.DELETE, 'budgets');
-                      }
-                    }}
-                    title="Hapus Anggaran"
-                    className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-500 hover:text-rose-400 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                <div className="flex items-baseline justify-between mb-4">
+                  <p className="text-3xl font-semibold text-white tracking-tighter">
+                    {formatRupiah(spent)}
+                    <span className="text-sm font-bold text-slate-500 tracking-normal ml-2">
+                      terpakai dari {formatRupiah(budget.amount)}
+                    </span>
+                  </p>
                 </div>
-              </div>
 
-              <div className="flex items-baseline justify-between mb-4">
-                <p className="text-3xl font-semibold text-white tracking-tighter">
-                  {formatRupiah(spent)}
-                  <span className="text-sm font-bold text-slate-500 tracking-normal ml-2">terpakai dari {formatRupiah(budget.amount)}</span>
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percent}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                    className={cn(
-                      "h-full rounded-full transition-colors duration-500 relative",
-                      isOver ? "bg-gradient-to-r from-rose-500 to-rose-400" : isNearlyOver ? "bg-gradient-to-r from-amber-500 to-amber-400" : isHalf ? "bg-gradient-to-r from-yellow-500 to-yellow-400" : "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                <div className="space-y-4">
+                  <div className="h-3 w-full bg-black/40 rounded-full overflow-hidden p-0.5 border border-white/5 shadow-inner">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${percent}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className={cn(
+                        "h-full rounded-full transition-colors duration-500 relative",
+                        isOver
+                          ? "bg-gradient-to-r from-rose-500 to-rose-400"
+                          : isNearlyOver
+                            ? "bg-gradient-to-r from-amber-500 to-amber-400"
+                            : isHalf
+                              ? "bg-gradient-to-r from-yellow-500 to-yellow-400"
+                              : "bg-gradient-to-r from-emerald-500 to-emerald-400",
+                      )}
+                    >
+                      <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30 blur-[2px]"></div>
+                    </motion.div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-4">
+                    {isOver ? (
+                      <div className="flex items-center gap-1.5 text-rose-400 text-xs font-bold tracking-wide">
+                        <AlertTriangle className="w-4 h-4" /> Budget Habis
+                      </div>
+                    ) : isNearlyOver ? (
+                      <div className="flex items-center gap-1.5 text-amber-500 text-xs font-bold tracking-wide">
+                        <TrendingDown className="w-4 h-4" /> Budget Hampir Habis
+                      </div>
+                    ) : isHalf ? (
+                      <div className="flex items-center gap-1.5 text-yellow-500 text-xs font-bold tracking-wide">
+                        <Info className="w-4 h-4" /> Budget Sudah 50%
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold tracking-wide">
+                        <CheckCircle2 className="w-4 h-4" /> Sesuai jalur
+                      </div>
                     )}
-                  >
-                    <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white/30 blur-[2px]"></div>
-                  </motion.div>
+                    {!isOver && (
+                      <div className="text-xs font-bold text-slate-400">
+                        Sisa: {formatRupiah(budget.amount - spent)}
+                      </div>
+                    )}
+                    {isOver && spent > budget.amount && (
+                      <div className="text-xs font-bold text-rose-400">
+                        Lebih: {formatRupiah(spent - budget.amount)}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 mt-4">
-                  {isOver ? (
-                    <div className="flex items-center gap-1.5 text-rose-400 text-xs font-bold tracking-wide">
-                      <AlertTriangle className="w-4 h-4" /> Budget Habis
-                    </div>
-                  ) : isNearlyOver ? (
-                    <div className="flex items-center gap-1.5 text-amber-500 text-xs font-bold tracking-wide">
-                      <TrendingDown className="w-4 h-4" /> Budget Hampir Habis
-                    </div>
-                  ) : isHalf ? (
-                    <div className="flex items-center gap-1.5 text-yellow-500 text-xs font-bold tracking-wide">
-                      <Info className="w-4 h-4" /> Budget Sudah 50%
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold tracking-wide">
-                      <CheckCircle2 className="w-4 h-4" /> Sesuai jalur
-                    </div>
-                  )}
-                  {!isOver && (
-                    <div className="text-xs font-bold text-slate-400">
-                      Sisa: {formatRupiah(budget.amount - spent)}
-                    </div>
-                  )}
-                  {isOver && spent > budget.amount && (
-                    <div className="text-xs font-bold text-rose-400">
-                      Lebih: {formatRupiah(spent - budget.amount)}
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
-            </motion.div>
-          );
-        })}
-        {budgets.filter(b => b.month === selectedMonth).length === 0 && (
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-[60px] rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+              </motion.div>
+            );
+          })}
+        {budgets.filter((b) => b.month === selectedMonth).length === 0 && (
           <div className="md:col-span-2 xl:col-span-3 py-32 flex flex-col items-center justify-center text-center opacity-30 select-none">
             <PieChart className="w-20 h-20 mb-6" />
-            <h3 className="text-2xl font-bold">Belum ada anggaran untuk bulan ini</h3>
-            <p className="mt-2 font-medium max-w-sm">Setiap rupiah butuh tugas. Tetapkan pendapatan Anda ke kategori agar tetap terkendali.</p>
+            <h3 className="text-2xl font-bold">
+              Belum ada anggaran untuk bulan ini
+            </h3>
+            <p className="mt-2 font-medium max-w-sm">
+              Setiap rupiah butuh tugas. Tetapkan pendapatan Anda ke kategori
+              agar tetap terkendali.
+            </p>
           </div>
         )}
       </div>
@@ -266,18 +330,30 @@ export default function BudgetPage() {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { if (!isSaving) setIsModalOpen(false); }} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              exit={{ opacity: 0, scale: 0.9 }} 
-              transition={{ type: 'spring', bounce: 0, duration: 0.4 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isSaving) setIsModalOpen(false);
+              }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
               className="relative w-full max-w-lg bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.05] backdrop-blur-md shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 rounded-[32px] overflow-hidden shadow-2xl"
             >
               <div className="p-8 pb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-semibold text-white">{editingBudget ? 'Ubah Anggaran' : 'Atur Anggaran Kategori'}</h2>
-                <button 
-                  onClick={() => { if (!isSaving) setIsModalOpen(false); }}
+                <h2 className="text-2xl font-semibold text-white">
+                  {editingBudget ? "Ubah Anggaran" : "Atur Anggaran Kategori"}
+                </h2>
+                <button
+                  onClick={() => {
+                    if (!isSaving) setIsModalOpen(false);
+                  }}
                   disabled={isSaving}
                   className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white disabled:opacity-50"
                 >
@@ -287,28 +363,59 @@ export default function BudgetPage() {
               <form onSubmit={handleSave} className="p-8 space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Kategori</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">
+                      Kategori
+                    </label>
                     <div className="relative">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                      <select name="category" defaultValue={editingBudget?.category || ''} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white disabled:opacity-50">
-                        {EXPENSE_CATEGORIES.map(cat => <option key={cat} value={cat} className="bg-slate-900 text-white">{cat}</option>)}
+                      <select
+                        name="category"
+                        defaultValue={editingBudget?.category || ""}
+                        disabled={isSaving}
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors appearance-none text-white disabled:opacity-50"
+                      >
+                        {EXPENSE_CATEGORIES.map((cat) => (
+                          <option
+                            key={cat}
+                            value={cat}
+                            className="bg-slate-900 text-white"
+                          >
+                            {cat}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">Jumlah Anggaran (Rp)</label>
+                    <label className="text-xs font-semibold text-slate-500  tracking-wide px-1">
+                      Jumlah Anggaran (Rp)
+                    </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500 select-none">Rp</span>
-                      <input type="number" name="amount" defaultValue={editingBudget?.amount} disabled={isSaving} className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50" placeholder="misal: 500000" required />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500 select-none">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        name="amount"
+                        defaultValue={editingBudget?.amount}
+                        disabled={isSaving}
+                        className="w-full bg-black/20 border border-white/10 focus:border-emerald-500/50 focus:bg-black/40 shadow-inner rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 transition-colors text-white disabled:opacity-50"
+                        placeholder="misal: 500000"
+                        required
+                      />
                     </div>
                   </div>
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSaving}
                   className="w-full py-5 bg-emerald-500 text-white rounded-2xl font-semibold text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 flex items-center justify-center"
                 >
-                  {isSaving ? 'Memproses...' : (editingBudget ? 'Perbarui Anggaran' : 'Atur Anggaran')}
+                  {isSaving
+                    ? "Memproses..."
+                    : editingBudget
+                      ? "Perbarui Anggaran"
+                      : "Atur Anggaran"}
                 </button>
               </form>
             </motion.div>

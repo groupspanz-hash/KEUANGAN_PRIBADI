@@ -150,7 +150,8 @@ export default function TransactionsPage() {
         txs.sort((a: any, b: any) => {
           const dateA = new Date(a.date).getTime() || 0;
           const dateB = new Date(b.date).getTime() || 0;
-          return dateB - dateA;
+          if (dateB !== dateA) return dateB - dateA;
+          return (b.createdAt || 0) - (a.createdAt || 0);
         });
         
         setTransactions(txs);
@@ -438,6 +439,11 @@ export default function TransactionsPage() {
       matchesDate = matchesDate && txDate <= new Date(endDate + 'T23:59:59').getTime();
     }
     return matchesSearch && matchesType && matchesDate;
+  }).sort((a, b) => {
+    const dateA = new Date(a.date).getTime() || 0;
+    const dateB = new Date(b.date).getTime() || 0;
+    if (dateB !== dateA) return dateB - dateA;
+    return (b.createdAt || 0) - (a.createdAt || 0);
   });
 
   const { language } = useStore();
@@ -569,9 +575,9 @@ export default function TransactionsPage() {
                   <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">
                     <h3 className="text-xl font-bold truncate text-white">{tx.description}</h3>
                     {tx.isRecurring && (
-                      <span className="inline-flex items-center gap-1 text-xs  font-semibold tracking-wide bg-blue-500/10 px-2 py-1 rounded-md text-blue-400 mx-auto md:mx-0">
-                        <RefreshCw className="w-3 h-3" />
-                        Berulang
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-wider px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.3)] mx-auto md:mx-0">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        BERULANG {tx.recurringInterval === 'monthly' ? '(Bln)' : tx.recurringInterval === 'weekly' ? '(Mgg)' : tx.recurringInterval === 'yearly' ? '(Thn)' : ''}
                       </span>
                     )}
                     {tx.receiptUrl && (
